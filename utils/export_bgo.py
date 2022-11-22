@@ -272,7 +272,7 @@ class WFTB_OP_export_bgo(bpy.types.Operator):
 
     @staticmethod
     def create_header(header_name, header_size, file):
-        file.write(struct.pack('L', header_size))
+        file.write(struct.pack('I', header_size))
         file.write(bytes(header_name, 'utf-8'))
         return file.tell() - 8
 
@@ -286,7 +286,7 @@ class WFTB_OP_export_bgo(bpy.types.Operator):
 
     def write_materials(self, file):
         mlst_start_offset = self.create_header('MLST', 0, file)
-        file.write(struct.pack('L', len(bpy.data.materials)))
+        file.write(struct.pack('I', len(bpy.data.materials)))
         for mtl in bpy.data.materials:
             self.write_material_individual(mtl, file)
 
@@ -444,7 +444,7 @@ class WFTB_OP_export_bgo(bpy.types.Operator):
         bm_tris = bm.calc_loop_triangles()
         uv_layers = len(bm.loops.layers.uv)
         range_uv_layers = range(uv_layers) # Range outside of loop, faster
-        file.write(struct.pack('LL', len(bm_tris), uv_layers))
+        file.write(struct.pack('II', len(bm_tris), uv_layers))
         for tri in bm_tris:
             mat_index = 0
             try:
@@ -500,7 +500,7 @@ class WFTB_OP_export_bgo(bpy.types.Operator):
             if obj.animation_data is not None and obj.animation_data.action is not None:
                 if self.find_object_type(obj) == 'OBJM':    
                     anim_offset = self.create_header('ANIM', 0, file)
-                    file.write(struct.pack('L', objects_id_dictionary[obj.name])) #Object ID (reference to mesh)
+                    file.write(struct.pack('I', objects_id_dictionary[obj.name])) #Object ID (reference to mesh)
                     asmp_offset = self.create_header('ASMP', 0, file)
 
                     keys = self.get_keyframes(obj) # Get every keyframe number
@@ -581,7 +581,7 @@ class WFTB_OP_export_bgo(bpy.types.Operator):
         """Get all the objects that are not in a collection with the suffix #exclude"""
         hier_start_offset = self.create_header('HIER', 0, file)
         exportables = self.get_exportables()
-        file.write(struct.pack('L', len(exportables)))
+        file.write(struct.pack('I', len(exportables)))
         objects_id_dictionary = {}
         objects_id_current = 1
         objects_id_mesh = -1
