@@ -49,6 +49,7 @@ from nodeitems_utils import NodeItem, register_node_categories, unregister_node_
 from nodeitems_builtins import ShaderNodeCategory
 import threading
 import subprocess
+from .addons import *
 
 
 classes = []
@@ -66,6 +67,7 @@ def register():
     # Register Wrapper Node
     newcatlist = [ShaderNodeCategory("SH_NEW_CUSTOM", "Wreckfest", items=[NodeItem("WreckfestWrapperNode"), ]), ]
     register_node_categories("CUSTOM_NODES", newcatlist)
+    addons.register()
 
 
 def unregister():
@@ -78,3 +80,4 @@ def unregister():
     del bpy.types.WindowManager.WFTBPanel
 
     registration.unregister_classes(classes)
+    addons.unregister()
