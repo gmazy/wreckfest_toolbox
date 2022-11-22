@@ -100,8 +100,14 @@ class WreckfestToolboxAddonPreference(bpy.types.AddonPreferences):
         description="Add a Split edge modifier for sharp edges (marked) on export"
     )
 
+    build_bmap: bpy.props.BoolProperty(
+        name="Build Bmap",
+        description="Build .bmap textures using bimage.exe",
+        default=True
+    )
+
     build_after_export: bpy.props.BoolProperty(
-        name="Build after export",
+        name="Build After Export",
         description="Launch the Build Asset Script in background "
                     "for the newly exported .bgo3 file once the export is done",
         default=True

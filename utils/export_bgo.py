@@ -11,6 +11,8 @@
 import os
 import time
 import struct
+import subprocess
+import sys
 import bpy
 import bmesh
 import math
@@ -106,6 +108,7 @@ class WFTB_OP_export_bgo(bpy.types.Operator):
         self.export_path = bpy.context.scene.get('wftb_bgo_export_path')
         self.output = None
         self.errors = None
+        self.done_bmaps = [] 
 
     def execute(self, context):
         """The exporter will export every objects,
@@ -403,8 +406,33 @@ class WFTB_OP_export_bgo(bpy.types.Operator):
         for tn in tex_nodes:
             self.write_texture_node_individual(tn["node"], tn["id"], file)
 
-    # This method take a  TEX Node in param, and it's slot_id from Princ BSDF to WF dict
+    def build_bmap_file(self,filepath):
+        '''Convert .tga, .png texture to .bmap with bgeometry.exe'''
+        filepath = filepath.replace('\\', '/') # To linux paths
+        if filepath[-4:].lower() in ['.png','.tga'] and filepath not in self.done_bmaps: 
+            self.done_bmaps.append(filepath)  # Progress each file only once.
+            if '/data/' in filepath: # Check that file is under /data/ folder
+                bmap_filepath = filepath[:-4] + '.bmap'
+                try: tga_lastmodified = os.path.getmtime(filepath) # Check that .tga file exists, get last modified time
+                except: return  # .tga file does not exist
+                try: bmap_lastmodified = os.path.getmtime(bmap_filepath) # Try check .bmap last modified time
+                except: bmap_lastmodified = 0  # .bmap file does not exist
+                if tga_lastmodified > bmap_lastmodified: # Check that .tga is more recent than .bmap
+                    relative_path = '/data/' + bmap_filepath.rsplit('/data/',maxsplit=1)[-1]
+                    if not os.path.isfile(self.prefs.wf_path + relative_path): # Check that matching name .bmap does not exist in wreckfest install.
+                        print(os.path.basename(filepath),"conversion to .bmap with bimage.exe ...")
+                        bimage = self.prefs.wf_path + R"\tools\bimage.exe"
+                        args = [bimage, '-auto', '-input', filepath, '-output', bmap_filepath]
+                        if sys.platform != 'win32':  args = ['wine'] + args # In Linux run .exe with wine
+                        try: subprocess.Popen(args) # Run bimage in background
+                        except: print("Failed to run bimage.exe")
 
+                        # Try build alternative textures
+                        if '/vehicle/' in filepath and filepath.lower()[-7:-3] == '_c5.':
+                            for ext in 'c5','n','s','ao_c','damaged_c5','damaged_n','damaged_s':
+                                self.build_bmap_file(filepath[:-6] + ext + filepath[-4:])
+
+    # This method take a  TEX Node in param, and it's slot_id from Princ BSDF to WF dict
     def write_texture_node_individual(self, node, slotid, file):
         texture_path = None
         if node.image is not None and node.image.filepath is not None:
@@ -413,6 +441,9 @@ class WFTB_OP_export_bgo(bpy.types.Operator):
             texture_path = self.get_relative_texpath(absolute_texture_path)
         if texture_path is None:
             texture_path = 'data/art/textures/tmp_red_c.tga'
+        # Convert .tga to .bmap
+        if self.prefs.build_bmap:
+            self.build_bmap_file(absolute_texture_path)
         # Rename unsupported formats to bypass build_asset checks. PNG should be removed from here once it's officially supported.
         if texture_path[-4:].lower() in ['.png','.jpg']: 
             texture_path = texture_path[:-4] + '.tga'
