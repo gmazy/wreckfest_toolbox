@@ -608,7 +608,7 @@ class WFTB_OP_export_bgo(bpy.types.Operator):
             return 'OBJD'
         return ''
 
-    def write_objects(self, file, bake_animation=True):
+    def write_objects(self, file):
         """Get all the objects that are not in a collection with the suffix #exclude"""
         hier_start_offset = self.create_header('HIER', 0, file)
         exportables = self.get_exportables()
@@ -670,7 +670,7 @@ class WFTB_OP_export_bgo(bpy.types.Operator):
             self.write_filelen(object_offset, file, -8)
             self.write_filelen(hier_start_offset, file, -8)
 
-        self.write_animations(self, file, exportables, objects_id_dictionary, bake_animation)
+        self.write_animations(self, file, exportables, objects_id_dictionary, self.prefs.bake_animation)
 
 
     def build_and_notify(self):

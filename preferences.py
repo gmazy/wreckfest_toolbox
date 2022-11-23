@@ -100,6 +100,13 @@ class WreckfestToolboxAddonPreference(bpy.types.AddonPreferences):
         description="Add a Split edge modifier for sharp edges (marked) on export"
     )
 
+    bake_animation: bpy.props.BoolProperty(
+        name="Bake Animation",
+        description="Automatically add one keyframe for each frame. "
+                    "Disable this to set frames yourself or to use Wreckfest's interpolation",
+        default=True
+    )
+
     build_bmap: bpy.props.BoolProperty(
         name="Build Bmap",
         description="Build .bmap textures using bimage.exe",
