@@ -674,9 +674,15 @@ class WFTB_OP_export_bgo(bpy.types.Operator):
 
 
     def build_and_notify(self):
-        build_asset_file = self.prefs.wf_path + R"\tools\build_asset.bat"
-        popen_args = [build_asset_file, self.export_path]
-        if os.path.exists(build_asset_file):
+        bgeometry = os.path.join(self.prefs.wf_path, 'tools', 'bgeometry.exe') # os independent path
+        export_path = self.export_path
+        if '/vehicle/' in export_path or '\\vehicle\\' in export_path:
+            popen_args = [bgeometry, '-v', '-vhcl', '-input', export_path, '-output', export_path[:-5]+'.vhcl']
+        else:
+            popen_args = [bgeometry, '-v', '-input', export_path, '-output', export_path[:-5]+'.scne']
+        if sys.platform != 'win32': # In Linux run with wine
+            popen_args = ['wine'] + popen_args
+        if os.path.isfile(bgeometry):
             print("Building asset ...")
             thread = self.prefs.popen_and_call(self.notify, popen_args)
 

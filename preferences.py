@@ -134,7 +134,7 @@ class WreckfestToolboxAddonPreference(bpy.types.AddonPreferences):
         """
 
         def run_in_thread(on_exit_event, popen_args_list):
-            proc = subprocess.Popen(popen_args_list, shell=True)
+            proc = subprocess.Popen(popen_args_list)
             proc.wait()
             on_exit_event()
             return
