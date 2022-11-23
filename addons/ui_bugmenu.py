@@ -8,7 +8,7 @@
 bl_info = {  
     "name": "Bugmenu",  
     "author": "Mazay",  
-    "version": (0, 1, 3),  
+    "version": (0, 1, 4),  
     "blender": (2, 80, 0),  
     "location": "Topbar",  
     "description": "Adds Bugmenu to topbar.",  
@@ -20,7 +20,10 @@ bl_info = {
 bugmenu_copypaste = ''
 
 import bpy
+import os
 import re
+import sys
+import subprocess
 import bmesh
 import mathutils
 from bpy.props import StringProperty
@@ -49,6 +52,9 @@ class BugMenu(bpy.types.Menu):
         layout.separator()         
         if(op_exist("import_scene.scne")): layout.operator("import_scene.scne", icon='IMPORT')
         if(op_exist("import_scene.scneph")): layout.operator("import_scene.scneph", icon='IMPORT')
+        layout.separator() 
+        layout.operator("bugmenu.runbagedit")
+
         layout.separator() 
         layout.menu(BugMenuRepair.bl_idname)
         layout.separator()
@@ -239,6 +245,42 @@ class BUGMENU_OT_UpdateCustomdata(bpy.types.Operator):
                             obj['WF_'+str(key)] = value
 
         if (bpy.app.version>=(2,80)): obj.select_set(state=True) #Refresh view
+        return {'FINISHED'}
+
+class BUGMENU_OT_RunBagedit(bpy.types.Operator):
+    """Run BagEdit from Wreckfest/BagEdit"""
+    bl_idname = "bugmenu.runbagedit"
+    bl_label = "BagEdit"
+
+    @staticmethod
+    def bagedit_path():
+        return os.path.join(bpy.context.preferences.addons['wreckfest_toolbox'].preferences.wf_path,'BagEdit','BagEditCommunity.exe')
+
+    @staticmethod
+    def scene_path():
+        try:
+            path = bpy.context.scene.wftb_bgo_export_path
+        except:
+            return ''
+        if os.path.isfile(path[:-5]+'.scne'):
+            return path[:-5]+'.scne'
+        if os.path.isfile(path[:-5]+'.vhcl'):
+            return path[:-5]+'.vhcl'
+        return ''
+
+    @classmethod
+    def poll(cls, context):
+        try:
+            if os.path.isfile(cls.bagedit_path()): return 1
+        except:
+            return 0
+
+    def execute(self, context):
+        scene_path = self.scene_path()
+        args = [self.bagedit_path()]
+        if sys.platform != 'win32':  args = ['wine'] + args
+        if scene_path != '': args += [scene_path]
+        subprocess.Popen(args)
         return {'FINISHED'}
 
 class BUGMENU_OT_SetZeroSpec(bpy.types.Operator):
@@ -442,6 +484,7 @@ def register():
     bpy.utils.register_class(BugMenuCreate)
     bpy.utils.register_class(BUGMENU_OT_RepairCustomdata)
     bpy.utils.register_class(BUGMENU_OT_UpdateCustomdata)
+    bpy.utils.register_class(BUGMENU_OT_RunBagedit)
     bpy.utils.register_class(BUGMENU_OT_SetZeroSpec)
     bpy.utils.register_class(BUGMENU_OT_RoutesFromCurve)
     bpy.utils.register_class(BUGMENU_OT_ApplyModifier)
@@ -461,6 +504,7 @@ def unregister():
     bpy.utils.unregister_class(BugMenuCreate)
     bpy.utils.unregister_class(BUGMENU_OT_RepairCustomdata)
     bpy.utils.unregister_class(BUGMENU_OT_UpdateCustomdata)
+    bpy.utils.unregister_class(BUGMENU_OT_RunBagedit)
     bpy.utils.unregister_class(BUGMENU_OT_SetZeroSpec)
     bpy.utils.unregister_class(BUGMENU_OT_RoutesFromCurve)
     bpy.utils.unregister_class(BUGMENU_OT_ApplyModifier)
