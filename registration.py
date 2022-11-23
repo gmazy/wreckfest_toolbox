@@ -49,12 +49,18 @@ def unregister_classes(classes, debug=False):
 
 def register_menus():
     bpy.types.VIEW3D_MT_object_context_menu.append(object_context_menu)
+    bpy.types.TOPBAR_MT_file_export.append(menu_func_export)
 
 
 def unregister_menus():
     bpy.types.VIEW3D_MT_object_context_menu.remove(object_context_menu)
+    bpy.types.TOPBAR_MT_file_export.remove(menu_func_export)
 
 
 def object_context_menu(self, context):
     self.layout.separator()
     self.layout.menu("WFTB_MT_object_context_menu")
+
+def menu_func_export(self, context):
+    self.layout.operator("wftb.export_bgo_with_dialog", text="Bugbear Game Object V3 (.bgo3) (toolbox)")
+        
