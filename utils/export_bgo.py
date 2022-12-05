@@ -327,7 +327,7 @@ class WFTB_OP_export_bgo(bpy.types.Operator):
             # if no wreckfest node found, look for node group with #export in title.
             if not is_material_written:
                 for nd in mat.node_tree.nodes:
-                    if nd.type == 'GROUP': 
+                    if nd.type == 'GROUP' and nd.node_tree is not None: 
                         if "#export" in nd.node_tree.name.lower() or "#export" in nd.label.lower(): # Label or Name
                             self.write_nodegroup_node(nd, mat, file)
                             is_material_written = True
