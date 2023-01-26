@@ -352,9 +352,7 @@ class WFTB_OP_export_bgo(bpy.types.Operator):
         for key in wf_slots:
             image = node.get(key)
             if type(image) is bpy.types.Image:
-                absolute_texture_path = os.path.abspath(bpy.path.abspath(image.filepath))
-                texture_path = self.get_relative_texpath(absolute_texture_path)
-                texture_paths[wf_slots[key]] = texture_path
+                texture_paths[wf_slots[key]] = image.filepath
 
         file.write(struct.pack('I', len(texture_paths)))
 
@@ -438,20 +436,26 @@ class WFTB_OP_export_bgo(bpy.types.Operator):
         texture_path = None
         if node.image is not None and node.image.filepath is not None:
             # Get the image Path
-            absolute_texture_path = os.path.abspath(bpy.path.abspath(node.image.filepath))
-            texture_path = self.get_relative_texpath(absolute_texture_path)
-        if texture_path is None:
-            texture_path = 'data/art/textures/tmp_red_c.tga'
-        # Convert .tga to .bmap
-        if self.prefs.build_bmap:
-            self.build_bmap_file(absolute_texture_path)
-        # Rename unsupported formats to bypass build_asset checks. PNG should be removed from here once it's officially supported.
-        if texture_path[-4:].lower() in ['.png','.jpg']: 
-            texture_path = texture_path[:-4] + '.tga'
-
+            texture_path = node.image.filepath
         self.write_texture_individual(slotid, texture_path, file)
 
     def write_texture_individual(self, slotid, texture_path, file):
+        if texture_path is not None:
+            # Convert Blender relative paths to Wreckrest relative paths
+            absolute_texture_path = os.path.abspath(bpy.path.abspath(texture_path))
+            texture_path = self.get_relative_texpath(absolute_texture_path)
+        # If relative path solve was success
+        if texture_path is not None:
+            # Convert .tga to .bmap
+            if self.prefs.build_bmap:
+                self.build_bmap_file(absolute_texture_path)
+            # Rename unsupported formats to bypass build_asset checks. PNG should be removed once it's officially supported.
+            if texture_path[-4:].lower() in ['.png','.jpg']: 
+                texture_path = texture_path[:-4] + '.tga'
+        else:
+            # Use default fallback texture when file is outside of /data/
+            texture_path = 'data/art/textures/tmp_red_c.tga'
+
         texc_start_offset = self.create_header('TEXC', 0, file)
         file.write(struct.pack('III', slotid, 1, 0))
         file.write(struct.pack('ffff', 1, 0, 0, 0))
