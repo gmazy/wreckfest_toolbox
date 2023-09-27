@@ -6,3 +6,4 @@
 2021 ThomsGuillemot - [Wreckfest Toolbox](https://github.com/ThomsGuillemot/wreckfest_toolbox)  
 2021 Mazay - Nodegroup Shaders, Optimizations  
 2022 Mazay - Bmap Builder, Linux support, Bugmenu  
+2024 Mazay - Mod Generator  
