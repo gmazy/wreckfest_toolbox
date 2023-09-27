@@ -2,8 +2,9 @@
 Addon loader to load generic Blender addons
 """
 
+# Enabled addons:
+__all__ = ["wf_shaders", "ui_bugmenu", 'io_import_wreckfest', "wf_mod_gen"]
 
-__all__ = ["wf_shaders", "ui_bugmenu", 'io_import_wreckfest'] #enabled addons
 
 def register():
     for name in __all__:
