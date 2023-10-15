@@ -41,17 +41,20 @@ wf_slots = {
 }
 wf_bsdf_slots = {
     # Ambiant Oclusion
-    'Transmission': 0,
+    'Transmission Weight': 0,
+    'Transmission': 0, # Pre 4.0
     # Diffuse / Base Color
     'Base Color': 1,
     # Specular Color
-    'Specular': 2,
+    'Specular IOR Level': 2,
+    'Specular': 2, # Pre 4.0
     # Specular Level
     'Specular Tint': 3,
     # Glossiness
     'Roughness': 4,
     # Self Illumination
-    'Emission': 5,
+    'Emission Color': 5,
+    'Emission': 5, # Pre 4.0
     # Opacity
     'Alpha': 6,
     # Filter Color
@@ -59,11 +62,12 @@ wf_bsdf_slots = {
     # Bump
     'Normal': 8,
     # Reflection
-    'Clearcoat': 9,
+    'Coat Weight': 9,
+    'Clearcoat': 9, # Pre 4.0
     # Refraction
     'IOR': 10,
     # Displacement
-    'Tangent': 11
+    'Tangent': 11,
 }
 
 # Add a scene property to store the export path
