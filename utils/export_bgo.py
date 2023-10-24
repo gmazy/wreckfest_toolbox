@@ -361,7 +361,7 @@ class WFTB_OP_export_bgo(bpy.types.Operator):
         file.write(struct.pack('I', len(texture_paths)))
 
         for slot in texture_paths:
-            self.write_texture_individual(slot, texture_paths[slot], file)
+            self.write_texture_individual(node, slot, texture_paths[slot], file)
 
     def write_bsdf_node(self, node, mat, file):
         # Create a dictionary of linked TEX_IMAGE Node (Shader input : TEX_Node)
@@ -441,9 +441,9 @@ class WFTB_OP_export_bgo(bpy.types.Operator):
         if node.image is not None and node.image.filepath is not None:
             # Get the image Path
             texture_path = node.image.filepath
-        self.write_texture_individual(slotid, texture_path, file)
+        self.write_texture_individual(node, slotid, texture_path, file)
 
-    def write_texture_individual(self, slotid, texture_path, file):
+    def write_texture_individual(self, node, slotid, texture_path, file):
         if texture_path is not None:
             # Convert Blender relative paths to Wreckrest relative paths
             absolute_texture_path = os.path.abspath(bpy.path.abspath(texture_path))
@@ -460,10 +460,35 @@ class WFTB_OP_export_bgo(bpy.types.Operator):
             # Use default fallback texture when file is outside of /data/
             texture_path = 'data/art/textures/tmp_red_c.tga'
 
+        uvid = 1
+        scale_x = 1
+        scale_y = 1
+        # Go through nodes at Vector input of Image node
+        node_input = node.inputs['Vector']
+        if node_input.is_linked:
+            # Get material scale from Mapping node
+            linked_node = node_input.links[0].from_socket.node
+            ntype = linked_node.type
+            if ntype=='MAPPING': # Mapping node
+                scale_x, scale_y, _ = linked_node.inputs['Scale'].default_value
+            elif ntype=='GROUP': # Nodegroup with Scale
+                if 'Scale' in linked_node.inputs and linked_node.inputs['Scale'].type=='VECTOR':
+                    scale_x, scale_y, _ = linked_node.inputs['Scale'].default_value
+            # Find UV node
+            if ntype=='MAPPING' or ntype=='GROUP':
+                inputs = linked_node.inputs
+                if len(inputs)>0 and inputs[0].is_linked:
+                    linked_node = inputs[0].links[0].from_socket.node
+            # Change UV for #blend, Triggered by name 'UVMap2' as UVs don't have order.
+            if linked_node.type=='UVMAP' and linked_node.uv_map.lower()=='uvmap2':
+                uvid = 2
+
         texc_start_offset = self.create_header('TEXC', 0, file)
-        file.write(struct.pack('III', slotid, 1, 0))
-        file.write(struct.pack('ffff', 1, 0, 0, 0))
-        file.write(struct.pack('ffff', 0, 1, 0, 0))
+        file.write(struct.pack('III', slotid, uvid, 0)) # Material id, Misc param 0, ?
+        # 4x4 Inverse transfrom matrix, Z-up
+        # Used store #blend tiling factor for Misc param 1-2
+        file.write(struct.pack('ffff', scale_x, 0, 0, 0))
+        file.write(struct.pack('ffff', 0, scale_y, 0, 0))
         file.write(struct.pack('ffff', 0, 0, 1, 0))
         file.write(struct.pack('ffff', 0, 0, 0, 1))
         self.write_cstring(texture_path, file)
