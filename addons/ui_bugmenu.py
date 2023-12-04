@@ -8,7 +8,7 @@
 bl_info = {  
     "name": "Bugmenu",  
     "author": "Mazay",  
-    "version": (0, 1, 6),  
+    "version": (0, 1, 7),  
     "blender": (2, 80, 0),  
     "location": "Topbar",  
     "description": "Adds Bugmenu to topbar.",  
@@ -92,7 +92,7 @@ class BUGMENU_MT_set_shader(bpy.types.Menu):
         layout.separator()
         layout.label(text="Node Groups:", icon='NODETREE')
         for ng in reversed(bpy.data.node_groups):
-            if '#export' in ng.name:
+            if '#' in ng.name:
                 text = ng.name.replace('#export','')
                 layout.operator("bugmenu.set_shader", text=text).shader = ng.name
         layout.separator()
@@ -579,7 +579,7 @@ class BUGMENU_OT_set_shader(bpy.types.Operator):
                             for nd_name in tree.nodes.keys(): # Loop nodes. keys() copy to list to prevent infinite loop.
                                 nd = tree.nodes[nd_name] 
                                 if (nd.type == 'BSDF_PRINCIPLED' or nd.name == "Wreckfest Wrapper" or
-                                    nd.type == 'GROUP' and ("#export" in nd.node_tree.name.lower() or "#export" in nd.label.lower())):
+                                    nd.type == 'GROUP' and ("#" in nd.node_tree.name.lower() or "#" in nd.label.lower())):
                                     # Capture node links and properties
                                     nodes_at_inputs = capture_inputs(nd)
                                     node_at_output = capture_output(nd)
@@ -639,7 +639,7 @@ class BUGMENU_OT_setzerospec(bpy.types.Operator):
                                         coat_weight = 'Coat Weight' if bpy.app.version>=(4,00) else 'Clearcoat'
                                         tree.links.new(nd.inputs[coat_weight], imageNode.outputs['Color'])
                                     if (nd.name == "Wreckfest Wrapper" or
-                                        nd.type == 'GROUP' and ("#export" in nd.node_tree.name.lower() or "#export" in nd.label.lower())):
+                                        nd.type == 'GROUP' and ("#" in nd.node_tree.name.lower() or "#" in nd.label.lower())):
                                         tree.links.new(nd.inputs[9], imageNode.outputs['Color'])
         return {'FINISHED'}
 
