@@ -8,7 +8,7 @@
 bl_info = {  
     "name": "Wreckfest Shaders Append",  
     "author": "Mazay",  
-    "version": (1, 2),  
+    "version": (1, 3),  
     "blender": (2, 80, 0),  
     "location": "Addons: Bugmenu addon, Scne Importer",
     "category": "Node"}  
@@ -26,10 +26,12 @@ class WF_SHADERS_OT_append_wf_shaders(bpy.types.Operator):
         filepath = os.path.join(addon_folder,'shaders.blend')
         if os.path.exists(filepath):
             with bpy.data.libraries.load(filepath, link=False) as (data_from, data_to):
+                print("\nAppend node groups:  ", end='')
                 for group_name in data_from.node_groups:
                     if group_name not in bpy.data.node_groups.keys() and group_name+' #export' not in bpy.data.node_groups.keys():
-                        print("Append node group: ", group_name)
+                        print(group_name, end=', ')
                         data_to.node_groups += [group_name]
+                print('')
             # Make #pbr nodes permanent
             for group in data_to.node_groups:
                 if '#pbr' in group.name:

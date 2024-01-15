@@ -8,7 +8,7 @@
 bl_info = {  
     "name": "Bugmenu",  
     "author": "Mazay",  
-    "version": (0, 1, 7),  
+    "version": (0, 1, 8),  
     "blender": (2, 80, 0),  
     "location": "Topbar",  
     "description": "Adds Bugmenu to topbar.",  
@@ -91,10 +91,15 @@ class BUGMENU_MT_set_shader(bpy.types.Menu):
         layout.label(text="Set Shader for Blender view:")
         layout.separator()
         layout.label(text="Node Groups:", icon='NODETREE')
-        for ng in reversed(bpy.data.node_groups):
-            if '#' in ng.name:
-                text = ng.name.replace('#export','')
-                layout.operator("bugmenu.set_shader", text=text).shader = ng.name
+        shaders = []
+        for name in bpy.data.node_groups.keys():
+            if '#' in name:
+                if name.lower().startswith(("#s","#u","#v","#w","#x")):
+                    shaders.append(name)
+                else:
+                    shaders.insert(0,name)
+        for shader in shaders:
+            layout.operator("bugmenu.set_shader", text=shader).shader = shader
         layout.separator()
         layout.label(text="Blender Internal:", icon='NODE')
         layout.operator("bugmenu.set_shader", text='Principled BSDF').shader = 'Principled BSDF'
@@ -130,6 +135,7 @@ class BUGMENU_MT_set_custom_properties(bpy.types.Menu):
         layout.operator("object.set_customdata", text='animation_colliding').value = 'dyn = "data/property/object/animation_colliding"'
         layout.operator("object.set_customdata", text='animation_colliding_random_start').value = 'dyn = "data/property/object/animation_colliding_random_start"'
         layout.operator("object.set_customdata", text='ghost').value = 'dyn = "data/property/object/ghost"'
+        layout.operator("object.set_customdata", text='decomp_test').value = 'dyn = "data/property/object/decomp_test"'
         layout.separator() 
         layout.label(text="Volume Settings:")
         layout.operator("object.set_customdata", text='ambient_roaddust_gravel_01').value = 'vol = "data/property/object/ambient_roaddust_gravel_01"'   
@@ -176,9 +182,10 @@ class OBJECT_OT_set_customdata(bpy.types.Operator):
             'dyn = "data/property/object/animtest"':'Enables keyframe animations',
             'dyn = "data/property/object/animation_colliding"':'Enables colliding keyframe animations',
             'dyn = "data/property/object/animation_colliding_random_start"':'Enables colliding keyframe animations with random start time',
-            'dyn = "data/property/object/ghost"':'Turns object invisible. Used in special cases for hiding placeholder object',
-            'otherway = true':'Reverses Ai Route. Should be applied on #ai_route',
-            'crossstart = true':'If the alt route crosses start/finish this property is needed. Apply on #ai_route.\nRemember to add also proxy checkpoint on alt route. (#checkpointXX_altX_proxy1)',
+            'dyn = "data/property/object/ghost"':'Turns object invisible in older builds. Used for placeholder object',
+            'dyn = "data/property/object/decomp_test"':'Decompose. Enables change to #dam1 damage mesh.',
+            'otherway = true':'Reverses all Ai Routes. Apply on #ai_route_main',
+            'crossstart = true':'Reverses alternative route. If the alt route crosses start/finish this property is needed. Apply on #ai_route_alt.\nRemember to add also proxy checkpoint on alt route. (#checkpointXX_altX_proxy1)',
             'IsCollisionModel = true':'Turns object invisible. Used to hide vehicle collision spheres and proxies.',
         }
         text = properties.value
@@ -468,7 +475,8 @@ class BUGMENU_OT_set_shader(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return len(context.selected_objects) > 0
+        if context.selected_objects: return True
+        cls.poll_message_set("Please select an object")
 
     @classmethod
     def description(cls, context, properties):
@@ -536,6 +544,9 @@ class BUGMENU_OT_set_shader(bpy.types.Operator):
             nd = tree.nodes.new("ShaderNodeGroup")
             nd.node_tree = bpy.data.node_groups[self.shader]
             max_input = len(nd.inputs)
+            # Fix viewport transparency
+            if material.blend_method=='OPAQUE':
+                material.blend_method = 'HASHED'
             # Restore links to new node
             for node_id in linked_nodes:
                 if node_id < max_input: # If input exists in new node
@@ -545,14 +556,13 @@ class BUGMENU_OT_set_shader(bpy.types.Operator):
                         image_node = linked_nodes[node_id].node
                         if image_node.type == 'TEX_IMAGE':
                             tree.links.new(nd.inputs[13], image_node.outputs['Alpha'])
-                            # Fix viewport transparency
-                            if material.blend_method=='OPAQUE' and image_node.image is not None:
+                            # Fix viewport shadows
+                            if material.shadow_method=='OPAQUE' and image_node.image is not None:
                                 path = image_node.image.filepath
                                 if '_c1.' in path:
                                     material.blend_method = 'CLIP'
                                     material.shadow_method = 'CLIP'
                                 elif '_c5.' in path:
-                                    material.blend_method = 'HASHED'
                                     material.shadow_method = 'CLIP'
                                 print('Set Alpha Clip for "'+material.name+'"')
             return nd
@@ -566,11 +576,13 @@ class BUGMENU_OT_set_shader(bpy.types.Operator):
                         tree.links.new(nd.inputs[bsdf_slot_name], linked_nodes[node_id])
             return nd
 
+        # Skip if shader no longer exists (quick menu)
+        if self.shader not in bpy.data.node_groups.keys()+['Principled BSDF']:
+            return {'FINISHED'} 
+
         updated_node_trees = []
         for obj in bpy.context.selected_objects:
-                #for slot in obj.material_slots:
-                if len(obj.material_slots)>0: # Replace only active material
-                    slot = obj.material_slots[obj.active_material_index] 
+                for slot in obj.material_slots:
                     if slot.material and slot.material.node_tree and slot.material.node_tree.nodes: # Skip materials without nodes
                         print('Material "'+slot.material.name+'" shader replace')
                         tree = slot.material.node_tree
@@ -578,24 +590,25 @@ class BUGMENU_OT_set_shader(bpy.types.Operator):
                             updated_node_trees.append(tree)
                             for nd_name in tree.nodes.keys(): # Loop nodes. keys() copy to list to prevent infinite loop.
                                 nd = tree.nodes[nd_name] 
-                                if (nd.type == 'BSDF_PRINCIPLED' or nd.name == "Wreckfest Wrapper" or
-                                    nd.type == 'GROUP' and ("#" in nd.node_tree.name.lower() or "#" in nd.label.lower())):
-                                    # Capture node links and properties
-                                    nodes_at_inputs = capture_inputs(nd)
-                                    node_at_output = capture_output(nd)
-                                    location = nd.location.x, nd.location.y
-                                    width = nd.width
-                                    # Remove node
-                                    tree.nodes.remove(nd)
-                                    # Create new node
-                                    if self.shader == 'Principled BSDF': # If chosen menu option to Princibled BSDF
-                                        new_node = add_bsdf_node(tree,nodes_at_inputs)
-                                    else:
-                                        new_node = add_nodegroup_node(tree,nodes_at_inputs,slot.material)
-                                    # Restores links and properties
-                                    new_node.location = location
-                                    new_node.width = width
-                                    if node_at_output and len(new_node.outputs)>0: tree.links.new(new_node.outputs[0], node_at_output)
+                                if (nd.type == 'BSDF_PRINCIPLED' or nd.name == "Wreckfest Wrapper" or # BSDF or Wrapper
+                                    nd.type == 'GROUP' and ("#" in nd.node_tree.name or "#" in nd.label)): # or nodegroup shader
+                                    if(slot.material==obj.active_material or nd.type == 'BSDF_PRINCIPLED' and '#pbr' in self.shader): # Active material or BSDF to #pbr
+                                        # Capture node links and properties
+                                        nodes_at_inputs = capture_inputs(nd)
+                                        node_at_output = capture_output(nd)
+                                        location = nd.location.x, nd.location.y
+                                        width = nd.width
+                                        # Remove node
+                                        tree.nodes.remove(nd)
+                                        # Create new node
+                                        if self.shader == 'Principled BSDF': # If chosen menu option to Principled BSDF
+                                            new_node = add_bsdf_node(tree,nodes_at_inputs)
+                                        else:
+                                            new_node = add_nodegroup_node(tree,nodes_at_inputs,slot.material)
+                                        # Restores links and properties
+                                        new_node.location = location
+                                        new_node.width = width
+                                        if node_at_output and len(new_node.outputs)>0: tree.links.new(new_node.outputs[0], node_at_output)
         return {'FINISHED'}        
 
 class BUGMENU_OT_setzerospec(bpy.types.Operator):
@@ -617,7 +630,7 @@ class BUGMENU_OT_setzerospec(bpy.types.Operator):
             return image
 
         fileName = "default_zero_spec_s.tga"
-        fullPath = r'//..\..\..\data\art\textures\default_zero_spec_s.tga'
+        fullPath = r'X:\data\art\textures\default_zero_spec_s.tga'
 
         updated_node_trees = []
         for obj in bpy.context.selected_objects:
