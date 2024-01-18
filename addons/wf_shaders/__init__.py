@@ -8,7 +8,7 @@
 bl_info = {  
     "name": "Wreckfest Shaders Append",  
     "author": "Mazay",  
-    "version": (1, 3),  
+    "version": (1, 4),  
     "blender": (2, 80, 0),  
     "location": "Addons: Bugmenu addon, Scne Importer",
     "category": "Node"}  
@@ -24,6 +24,13 @@ class WF_SHADERS_OT_append_wf_shaders(bpy.types.Operator):
     def execute(self, context):
         addon_folder = os.path.dirname(os.path.realpath(__file__))
         filepath = os.path.join(addon_folder,'shaders.blend')
+        # Rename existing corrupted shaders with "(broken)"
+        for group in bpy.data.node_groups:
+            for node in group.nodes:
+                if node.type == '': # Undefined node
+                    if '(broken)' not in group.name: group.name += ' (broken)'
+                    break
+        # Append new shaders
         if os.path.exists(filepath):
             with bpy.data.libraries.load(filepath, link=False) as (data_from, data_to):
                 print("\nAppend node groups:  ", end='')
