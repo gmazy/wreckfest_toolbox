@@ -221,9 +221,9 @@ class WFTB_OP_export_bgo(bpy.types.Operator):
     def get_exportables():
         """Get all the objects in the scene"""
         exportables = []
-        # get all visible objects of the file
+        # get objects in visible collections
         for obj in bpy.context.view_layer.objects:
-            if (obj.type == 'MESH' or obj.type == 'EMPTY') and ('PivotObject' not in obj):
+            if (obj.type == 'MESH' or obj.type == 'EMPTY') and ('PivotObject' not in obj) and (obj.hide_viewport == False):
                 is_exportable = True
                 for collection in obj.users_collection:
                     if collection.name.endswith("#exclude"):
