@@ -562,7 +562,7 @@ class WFTB_OP_export_bgo(bpy.types.Operator):
 
         frame_before = bpy.context.scene.frame_current #backup frame selection
         for obj in exportables:
-            if obj.animation_data is not None and obj.animation_data.action is not None:
+            if obj.animation_data and obj.animation_data.action and len(obj.animation_data.action.fcurves)>0:
                 if self.find_object_type(obj) == 'OBJM':    
                     anim_offset = self.create_header('ANIM', 0, file)
                     file.write(struct.pack('I', objects_id_dictionary[obj.name])) #Object ID (reference to mesh)
