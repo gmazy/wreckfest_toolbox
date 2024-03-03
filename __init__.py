@@ -32,7 +32,7 @@ def reload_modules(name):
         else:
             impline = "from . import %s" % (module)
 
-        print("Reloading %s" % (".".join([name] + path + [module])))
+        #print("Reloading %s" % (".".join([name] + path + [module])))
 
         exec(impline)
         importlib.reload(eval(module))
