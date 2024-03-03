@@ -369,9 +369,10 @@ class WFTB_OP_export_bgo(bpy.types.Operator):
 
         # Go through shader node inputs
         for sh_in in node.inputs:
+            # Export only linked image textures
             if sh_in.is_linked:
-                # WARNING : This can skip texture if people link smtg else than a TEX_IMAGE and/or link multiple things
-                if sh_in.links[0].from_socket.node.type == 'TEX_IMAGE':
+                image_node = sh_in.links[0].from_socket.node
+                if image_node.type == 'TEX_IMAGE' and image_node.image:
                     tex_nodes[sh_in.name] = sh_in.links[0].from_socket.node
 
         # Just take the len of linked Tex Nodes
@@ -395,12 +396,14 @@ class WFTB_OP_export_bgo(bpy.types.Operator):
         node_id = -1
         for sh_in in node.inputs:
             node_id += 1
-            # WARNING : This can skip texture if people link smtg else than a TEX_IMAGE and/or link multiple things
-            if node_id < 12 and sh_in.is_linked and sh_in.links[0].from_socket.node.type == 'TEX_IMAGE':
-                tn = {}
-                tn["node"] = sh_in.links[0].from_socket.node
-                tn["id"] = node_id
-                tex_nodes += (tn),
+            # Export only image textures linked to 12 first inputs
+            if node_id < 12 and sh_in.is_linked:
+                image_node = sh_in.links[0].from_socket.node
+                if image_node.type == 'TEX_IMAGE' and image_node.image:
+                    tn = {}
+                    tn["node"] = sh_in.links[0].from_socket.node
+                    tn["id"] = node_id
+                    tex_nodes += (tn),
 
         # Write len of linked Tex Nodes
         file.write(struct.pack('I', len(tex_nodes)))
@@ -454,8 +457,8 @@ class WFTB_OP_export_bgo(bpy.types.Operator):
             if self.prefs.build_bmap:
                 self.build_bmap_file(absolute_texture_path)
             # Rename unsupported formats to bypass build_asset checks. PNG should be removed once it's officially supported.
-            if texture_path[-4:].lower() in ['.png','.jpg']: 
-                texture_path = texture_path[:-4] + '.tga'
+            if texture_path[-4:].lower() != '.tga': 
+                texture_path = texture_path.rsplit('.',maxsplit=1)[0] + '.tga'
         else:
             # Use default fallback texture when file is outside of /data/
             texture_path = 'data/art/textures/tmp_red_c.tga'
@@ -479,8 +482,8 @@ class WFTB_OP_export_bgo(bpy.types.Operator):
                 inputs = linked_node.inputs
                 if len(inputs)>0 and inputs[0].is_linked:
                     linked_node = inputs[0].links[0].from_socket.node
-            # Change UV for #blend, Triggered by name 'UVMap2' as UVs don't have order.
-            if linked_node.type=='UVMAP' and linked_node.uv_map.lower()=='uvmap2':
+            # Change UV for #blend, Triggered by number 2 in name as UVs don't have order.
+            if linked_node.type=='UVMAP' and '2' in linked_node.uv_map:
                 uvid = 2
 
         texc_start_offset = self.create_header('TEXC', 0, file)
