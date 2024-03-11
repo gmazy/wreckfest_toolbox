@@ -121,10 +121,10 @@ class WFTB_OT_toggle_wreckfest_custom_data(bpy.types.Operator):
             del obj["WF_" + prop_name]
         # else if True
         elif enum_property[1] == 2:
-            obj["WF_" + prop_name] = 1
+            obj["WF_" + prop_name] = True
         # else if False
         elif enum_property[1] == 3:
-            obj["WF_" + prop_name] = 0
+            obj["WF_" + prop_name] = False
 
     def reset_properties(self):
         items = self.wf_props.items()
