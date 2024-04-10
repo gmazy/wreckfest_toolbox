@@ -99,7 +99,8 @@ class WFTB_PT_wreckfest_material_panel(bpy.types.Panel):
         row = self.layout.row(align=True)
         row.prop(prefs, "wf_physical_material_list", text="Physical Material")
         row = self.layout.row(align=True)
-        row.operator("wftb.set_physical_material", text="Apply", icon='CHECKMARK')
+        icon = 'CHECKMARK' if bpy.app.version >= (2,83) else 'NONE'
+        row.operator("wftb.set_physical_material", text="Apply", icon=icon)
 
 
 class WFTB_MT_object_context_menu(bpy.types.Menu):
