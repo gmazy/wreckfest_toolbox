@@ -64,10 +64,19 @@ class WreckfestToolboxAddonPreference(bpy.types.AddonPreferences):
     # Wreckfest path
     wf_path: bpy.props.StringProperty(
         name="Wreckfest Path",
+        description="\nSet this to Wreckfest install folder to automatically build BGO files during export",
         subtype="DIR_PATH",
         default=R"C:\Program Files (x86)\Steam\steamapps\common\Wreckfest",
         update=preference_save,
     )
+
+    # Breckfest.exe path
+    breckfest_path : bpy.props.StringProperty(
+        name="Breckfest.exe",
+        description="\nLocate Breckfest.exe to be able to import files",
+        subtype='FILE_PATH',
+        default=r"C:\Program Files (x86)\Steam\SteamApps\common\Wreckfest\tools\Breckfest.exe",
+        )
 
     # Build assets tool path
     wf_build_asset_subpath: bpy.props.StringProperty(
@@ -121,8 +130,15 @@ class WreckfestToolboxAddonPreference(bpy.types.AddonPreferences):
     )
 
     def draw(self, context):
-        row = self.layout.row(align=True)
+        layout = self.layout
+
+        row = layout.row(align=True)
+        row.alert = not path.isfile(path.join(self.wf_path,'Wreckfest.exe'))
         row.prop(self, "wf_path")
+
+        row = layout.row()
+        row.alert = not path.isfile(self.breckfest_path)
+        row.prop(self, "breckfest_path")
 
     @staticmethod
     def popen_and_call(on_exit, popen_args):
