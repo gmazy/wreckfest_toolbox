@@ -3,7 +3,7 @@ import bpy
 import os.path
 import subprocess
 import threading
-from os import path
+from os import path, environ
 
 
 def preference_save(self, context):
@@ -78,6 +78,13 @@ class WreckfestToolboxAddonPreference(bpy.types.AddonPreferences):
         default=r"C:\Program Files (x86)\Steam\SteamApps\common\Wreckfest\tools\Breckfest.exe",
         )
 
+    # Username
+    username : bpy.props.StringProperty(
+        name="Username",
+        description="\nUsername for exported BGO files metadata. Can be left empty",
+        default=environ['USERNAME'] if 'USERNAME' in environ else 'UNKNOWN_USERNAME',
+        )
+
     # Build assets tool path
     wf_build_asset_subpath: bpy.props.StringProperty(
         name="Wreckfest Build Asset Path",
@@ -139,6 +146,9 @@ class WreckfestToolboxAddonPreference(bpy.types.AddonPreferences):
         row = layout.row()
         row.alert = not path.isfile(self.breckfest_path)
         row.prop(self, "breckfest_path")
+
+        row = layout.row()
+        row.prop(self, "username")
 
     @staticmethod
     def popen_and_call(on_exit, popen_args):

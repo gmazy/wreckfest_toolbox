@@ -288,7 +288,7 @@ class WFTB_OP_export_bgo(bpy.types.Operator):
         info_start_offset = self.create_header('INFO', 0, file)
         file.write(struct.pack('I', 777))
         self.write_cstring('BGO', file)
-        my_username = os.environ['USERNAME'] if 'USERNAME' in os.environ else 'UNKNOWN_USERNAME'
+        my_username = self.prefs.username
         self.write_cstring(my_username, file)
         self.write_filelen(info_start_offset, file)
 
