@@ -80,7 +80,7 @@ class WreckfestToolboxAddonPreference(bpy.types.AddonPreferences):
 
     # Username
     username : bpy.props.StringProperty(
-        name="Username",
+        name="Author",
         description="\nUsername for exported BGO files metadata. Can be left empty",
         default=environ['USERNAME'] if 'USERNAME' in environ else 'UNKNOWN_USERNAME',
         )
