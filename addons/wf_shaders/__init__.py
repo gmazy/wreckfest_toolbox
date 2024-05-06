@@ -8,7 +8,7 @@
 bl_info = {  
     "name": "Wreckfest Shaders Append",  
     "author": "Mazay",  
-    "version": (1, 4),  
+    "version": (1, 5),  
     "blender": (2, 80, 0),  
     "location": "Addons: Bugmenu addon, Scne Importer",
     "category": "Node"}  
@@ -27,8 +27,11 @@ class WF_SHADERS_OT_append_wf_shaders(bpy.types.Operator):
         # Rename existing corrupted shaders with "(broken)"
         for group in bpy.data.node_groups:
             for node in group.nodes:
-                if node.type == '': # Undefined node
-                    if '(broken)' not in group.name: group.name += ' (broken)'
+                if node.bl_idname == 'NodeUndefined':
+                    try:
+                        if '(broken)' not in group.name: group.name += ' (broken)'
+                    except:
+                        print('Node Group is corrupted:', group.name)
                     break
         # Append new shaders
         if os.path.exists(filepath):
