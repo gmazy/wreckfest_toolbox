@@ -12,7 +12,7 @@
 bl_info = {  
     "name": "Import Bugbear SCNE format (.scne/.vhcl/.vhcm)",  
     "author": "Mazay, Cartoons",  
-    "version": (1, 0, 2),  
+    "version": (1, 0, 3),  
     "blender": (2, 80, 0),  
     "location": "File > Import",  
     "description": "Imports Wreckfest SCNE, VHCL and VHCM files",  
@@ -1931,6 +1931,15 @@ def make_vhcl_boxes(get):
     get.skipToHeader('vbox') # Bottom Box
     make_minmax_boxes(get, collection='Vhcm', customdata='IsCollisionModel = true')
 
+def create_fallback_model(filepath):
+    '''Fallback cube for encrypted files'''
+    filename = os.path.basename(filepath).lower()
+    if filename.endswith('.vhcl') and filename != 'body.vhcl':
+        name = filename.split('.')[0]
+        name = re.sub(r'_(\d+)$', r'#part\1', name)
+
+        create_cube_ob(name, size=1.0, collection='Encrypted-failed-import')
+
 
 def breckfest_uncompress(filepath):
     '''Uncompress and return data of .scne file'''
@@ -1955,7 +1964,7 @@ def breckfest_uncompress(filepath):
         if (header == b'\x08\x00\x00\x00'): popup('ERROR: File is encrypted! \n '+filepath)
         elif (os.path.getsize(filepath)>6590000): popup('Breckfest uncompress failed. Possibly too large filesize. \n '+filepath)
         else: popup('Breckfest uncompress failed! \n '+str(filepath))
-
+        create_fallback_model(filepath)
 
 
 def read_scne(context, filepath, short_pth=False, use_color=False, imp_model=False, imp_shpe=False, imp_anim=False, imp_mat=False, placeholder_mode=False,
