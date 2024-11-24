@@ -8,7 +8,7 @@
 bl_info = {  
     "name": "Bugmenu",  
     "author": "Mazay",  
-    "version": (0, 1, 8),  
+    "version": (0, 1, 9),  
     "blender": (2, 80, 0),  
     "location": "Topbar",  
     "description": "Adds Bugmenu to topbar.",  
@@ -93,7 +93,7 @@ class BUGMENU_MT_set_shader(bpy.types.Menu):
         layout.label(text="Node Groups:", icon='NODETREE')
         shaders = []
         for name in bpy.data.node_groups.keys():
-            if '#' in name:
+            if '#' in name and bpy.data.node_groups[name].library == None: # Contains # and not linked
                 if name.lower().startswith(("#s","#u","#v","#w","#x")):
                     shaders.append(name)
                 else:
@@ -131,7 +131,7 @@ class BUGMENU_MT_set_custom_properties(bpy.types.Menu):
         layout.operator("object.set_customdata", text='barrel').value = 'dyn = "data/property/object/barrel"'
         layout.operator("object.set_customdata", text='resetplayer').value = 'dyn = "data/property/object/resetplayer"'
         layout.operator("object.set_customdata", text='audio_start_area').value = 'dyn = "data/property/object/audio_start_area"'
-        layout.operator("object.set_customdata", text='animtest').value = 'dyn = "data/property/object/animtest"'
+        layout.operator("object.set_customdata", text='animation_ambient').value = 'dyn = "data/property/object/animation_ambient"'
         layout.operator("object.set_customdata", text='animation_colliding').value = 'dyn = "data/property/object/animation_colliding"'
         layout.operator("object.set_customdata", text='animation_colliding_random_start').value = 'dyn = "data/property/object/animation_colliding_random_start"'
         layout.operator("object.set_customdata", text='ghost').value = 'dyn = "data/property/object/ghost"'
@@ -179,7 +179,7 @@ class OBJECT_OT_set_customdata(bpy.types.Operator):
             'dyn = "data/property/object/trafficcone"':'Applies dynamics of traffic cone.',
             'dyn = "data/property/object/barrel"':'Applies dynamics of barrel',
             'dyn = "data/property/object/audio_start_area"':'Adds start area audio to object',
-            'dyn = "data/property/object/animtest"':'Enables keyframe animations',
+            'dyn = "data/property/object/animation_ambient"':'Enables keyframe animations',
             'dyn = "data/property/object/animation_colliding"':'Enables colliding keyframe animations',
             'dyn = "data/property/object/animation_colliding_random_start"':'Enables colliding keyframe animations with random start time',
             'dyn = "data/property/object/ghost"':'Turns object invisible in older builds. Used for placeholder object',
@@ -545,7 +545,7 @@ class BUGMENU_OT_set_shader(bpy.types.Operator):
             nd.node_tree = bpy.data.node_groups[self.shader]
             max_input = len(nd.inputs)
             # Fix viewport transparency
-            if material.blend_method=='OPAQUE':
+            if bpy.app.version<(4,2) and material.blend_method=='OPAQUE':
                 material.blend_method = 'HASHED'
             # Restore links to new node
             for node_id in linked_nodes:
@@ -556,15 +556,6 @@ class BUGMENU_OT_set_shader(bpy.types.Operator):
                         image_node = linked_nodes[node_id].node
                         if image_node.type == 'TEX_IMAGE':
                             tree.links.new(nd.inputs[13], image_node.outputs['Alpha'])
-                            # Fix viewport shadows
-                            if material.shadow_method=='OPAQUE' and image_node.image is not None:
-                                path = image_node.image.filepath
-                                if '_c1.' in path:
-                                    material.blend_method = 'CLIP'
-                                    material.shadow_method = 'CLIP'
-                                elif '_c5.' in path:
-                                    material.shadow_method = 'CLIP'
-                                print('Set Alpha Clip for "'+material.name+'"')
             return nd
 
         def add_bsdf_node(tree,linked_nodes):
