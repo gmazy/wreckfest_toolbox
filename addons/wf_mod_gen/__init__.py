@@ -8,7 +8,7 @@
 bl_info = {  
     "name": "Wreckfest Mod Generator",  
     "author": "Mazay",  
-    "version": (0, 6),  
+    "version": (0, 7),  
     "blender": (2, 80, 0),  
     "location": "File > New > Wreckfest",  
     "description": "",  
@@ -112,13 +112,13 @@ class WF_MODGEN_OT_create(bpy.types.Operator):
     #### UI Props ####
     trackname : StringProperty(name="Track Name", description="Title for autofill", default='', maxlen=0, update=trackname_change)
     # Folder
-    foldername : StringProperty(name="Folder Name", description="Folder in Wreckfest\\mods\\\n\nNote: Wreckfest folder must be configured in Toolbox addon preferences.", maxlen=25,update=view_update)
+    foldername : StringProperty(name="Folder Name", description="Folder in Wreckfest\\mods\\\n\nNote: Wreckfest folder must be configured in Toolbox addon preferences.", maxlen=30,update=view_update)
     # Group
     groupname : StringProperty(name="Group Name", description="", maxlen=30, update=view_update)
     title : StringProperty(name="Title", description="Title seen in main menu")
     description : StringProperty(name="Description", description="Description seen in main menu")
     # Event
-    eventid : StringProperty(name="Event Id", description="Unique Id to identify event.\n\nImportant:\n - Must be unique.\n - Other tracks sharing same Id may disappear", maxlen=30, update=view_update)
+    eventid : StringProperty(name="Event Id", description="Unique Id to identify event.\n\nImportant:\n - Must be unique.\n - Other tracks sharing same Id may disappear", maxlen=40, update=view_update)
     eventtitle : StringProperty(name="Title", description="")
     gamemode : bpy.props.EnumProperty(
         items=(
@@ -271,7 +271,14 @@ class WF_MODGEN_OT_create(bpy.types.Operator):
                 if not os.path.exists(weatherlist):
                     os.makedirs(folder)
                     file = bagwrite.BagWrite()
-                    file.weli_file(['data/property/weather/'+self.groupname+'/midday1.weat',])
+                    file.weli_file([
+                        'data/property/weather/fields/fields14_sunrise1.weat',
+                        'data/property/weather/fields/fields14_noon1.weat',
+                        'data/property/weather/'+self.groupname+'/midday1.weat',
+                        'data/property/weather/fields/fields14_midday2.weat',
+                        'data/property/weather/fields/fields14_afternoon1.weat',
+                        'data/property/weather/fields/fields14_sunset1.weat',
+                        ])
                     file.save(weatherlist)
 
             # Make evse event
