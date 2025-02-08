@@ -107,16 +107,15 @@ class WFTB_OP_export_bgo(bpy.types.Operator):
 
     prefs = None
 
-    def __init__(self):
+    def execute(self, context):
+        """The exporter will export every objects,
+         as long as they are not part of any collection that have the suffix #exclude"""
+
         # Get if the scene have a custom property referencing the export path
         self.export_path = bpy.context.scene.get('wftb_bgo_export_path')
         self.output = None
         self.errors = None
         self.done_bmaps = [] 
-
-    def execute(self, context):
-        """The exporter will export every objects,
-         as long as they are not part of any collection that have the suffix #exclude"""
         self.prefs = bpy.context.preferences.addons["wreckfest_toolbox"].preferences
 
         if not self.export_path:
