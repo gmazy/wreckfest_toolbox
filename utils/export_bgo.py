@@ -107,7 +107,8 @@ class WFTB_OP_export_bgo(bpy.types.Operator):
 
     prefs = None
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         # Get if the scene have a custom property referencing the export path
         self.export_path = bpy.context.scene.get('wftb_bgo_export_path')
         self.output = None
