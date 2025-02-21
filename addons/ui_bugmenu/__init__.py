@@ -8,7 +8,7 @@
 bl_info = {  
     "name": "Bugmenu",  
     "author": "Mazay",  
-    "version": (0, 1, 9),  
+    "version": (0, 2, 0),  
     "blender": (2, 80, 0),  
     "location": "Topbar",  
     "description": "Adds Bugmenu to topbar.",  
@@ -26,20 +26,14 @@ import sys
 import subprocess
 import bmesh
 import mathutils
+import bpy.utils.previews
 from bpy.props import StringProperty
 
 
 class BUGMENU_MT_menu(bpy.types.Menu):
     bl_label = "Bugmenu"
-
-    def op_exist(self,idname):
-        op = bpy.ops
-        for attr in idname.split("."):
-            op = getattr(op, attr)
-        return hasattr(bpy.types, op.idname())
     
     def draw(self, context):
-        op_exist = self.op_exist
         layout = self.layout
         layout.scale_y = 1.3
         if op_exist("wftb.export_bgo"): layout.operator("wftb.export_bgo", text="Export BGO (Direct)", icon='EXPORT')
@@ -53,30 +47,51 @@ class BUGMENU_MT_menu(bpy.types.Menu):
         if op_exist("import_scene.scne"): layout.operator("import_scene.scne", icon='IMPORT')
         if op_exist("import_scene.scneph"): layout.operator("import_scene.scneph", icon='IMPORT')
         layout.separator() 
-        layout.operator("bugmenu.runbagedit")
-        layout.separator() 
-        layout.menu("BUGMENU_MT_repair")
+        layout.operator("bugmenu.runbagedit", icon='GHOST_DISABLED')
+        layout.separator()
+        layout.menu("BUGMENU_MT_special")
         layout.separator()
         layout.menu("BUGMENU_MT_airoutes", icon='IPO_ELASTIC')
         layout.separator()
         layout.menu("BUGMENU_MT_set_shader", icon='NODE_MATERIAL')
         if (bpy.app.version>=(2,80)):
             layout.menu("BUGMENU_MT_set_material", icon='MATERIAL')
+        if op_exist("import_scene.repair_bmapcache"):
+            layout.separator()
+            layout.menu("BUGMENU_MT_bmapcache", icon='FILE_CACHE')
         layout.separator() 
         layout.operator("wm.call_menu", text="Set Custom Properties", icon='PRESET').name = "BUGMENU_MT_set_custom_properties"
 
 
-class BUGMENU_MT_repair(bpy.types.Menu):
-    bl_label = "Repair"
+class BUGMENU_MT_bmapcache(bpy.types.Menu):
+    bl_label = "Bmap Cache"
     def draw(self, context):
         layout = self.layout
-        layout.scale_y = 1.4
+        layout.scale_y = 1.8
+        layout.operator("import_scene.repair_bmapcache", text='Repair', icon='MODIFIER_DATA')
+        layout.operator("import_scene.repair_bmapcache", text='Refresh All (Slow)', icon='FILE_REFRESH').rebuild_all=True
+
+class BUGMENU_MT_special(bpy.types.Menu):
+    bl_label = "Special"
+    def draw(self, context):
+        global bugmenu_icons
+        layout = self.layout
+        layout.scale_y = 1.3
+        #layout.operator("bugmenu.replace_objects", icon_value=bugmenu_icons["replace_objects"].icon_id)
         layout.operator("bugmenu.repair_customdata", icon='LIBRARY_DATA_BROKEN')
         if (bpy.app.version>=(2,80)):
-            layout.operator("bugmenu.update_customdata", icon='PRESET') 
+            #layout.separator()
+            layout.menu("BUGMENU_MT_experimental", icon='TOOL_SETTINGS')
+
+class BUGMENU_MT_experimental(bpy.types.Menu):
+    bl_label = "Experimental"
+    def draw(self, context):
+        layout = self.layout
+        layout.scale_y = 1.3
+        layout.operator("bugmenu.update_customdata", icon='PRESET') 
 
 class BUGMENU_MT_airoutes(bpy.types.Menu):
-    bl_label = "Ai Routes"
+    bl_label = "AI Routes"
     def draw(self, context):
         layout = self.layout
         layout.scale_y = 1.4
@@ -105,7 +120,7 @@ class BUGMENU_MT_set_shader(bpy.types.Menu):
         layout.operator("bugmenu.set_shader", text='Principled BSDF').shader = 'Principled BSDF'
         layout.separator()
         layout.label(text="Append:", icon='APPEND_BLEND')
-        if BUGMENU_MT_menu.op_exist(self,"wf_shaders.append_wf_shaders"): layout.operator("wf_shaders.append_wf_shaders")
+        if op_exist("wf_shaders.append_wf_shaders"): layout.operator("wf_shaders.append_wf_shaders")
 
 class BUGMENU_MT_set_material(bpy.types.Menu):
     bl_label = "Set Material"
@@ -152,6 +167,12 @@ class BUGMENU_MT_set_custom_properties(bpy.types.Menu):
         if(bugmenu_copypaste != ''):
             layout.operator("object.set_customdata", text=bugmenu_copypaste).value = bugmenu_copypaste
 
+def op_exist(idname):
+    """Check if operator exists"""
+    op = bpy.ops
+    for attr in idname.split("."):
+        op = getattr(op, attr)
+    return hasattr(bpy.types, op.idname())
 
 # ------------------------------ Operators ------------------------------ #
 
@@ -246,7 +267,7 @@ class BUGMENU_OT_runbagedit(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
         try:
-            if os.path.isfile(cls.bagedit_path()): return 1
+            return os.path.isfile(cls.bagedit_path())
         except:
             return 0
 
@@ -258,10 +279,26 @@ class BUGMENU_OT_runbagedit(bpy.types.Operator):
         subprocess.Popen(args)
         return {'FINISHED'}
 
+class BUGMENU_OT_replace_objects(bpy.types.Operator):
+    """Replace all selected objects with the last selected object"""
+    bl_idname = "bugmenu.replace_objects"
+    bl_label = "Replace Selected Objects"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        return len(bpy.context.selected_objects) > 0
+
+    def execute(self, context):
+        print("Replacing")
+
+        return {'FINISHED'}
+
+
 class BUGMENU_OT_repair_customdata(bpy.types.Operator):
-    """Repair for 3dsMax Fbx Imports: \n\n- Repair & Clean Custom Properties\n- Rename images with actual image name"""
+    """Repair for 3ds Max FBX Imports: \n\n- Repair & Clean Custom Properties\n- Rename images with actual image name"""
     bl_idname = "bugmenu.repair_customdata"
-    bl_label = "Repair Fbx import from 3dsMax"
+    bl_label = "Repair FBX Import from 3ds Max"
     bl_options = {'REGISTER', 'UNDO'}
 
     @classmethod
@@ -296,7 +333,8 @@ class BUGMENU_OT_repair_customdata(bpy.types.Operator):
         return {'FINISHED'}
 
 class BUGMENU_OT_update_customdata(bpy.types.Operator):
-    """Update Custom Properties to new WF_ format\n\nBefore: CustomData: col = true\nAfter:    WF_col: true\n\nApplies to selected objects."""
+    """Update Custom Properties to the new WF_ format
+\nBefore: CustomData: col = true\nAfter:    WF_col: true\n\nApplies to selected objects."""
     bl_idname = "bugmenu.update_customdata"
     bl_label = "Update Custom Properties"
     bl_options = {'REGISTER', 'UNDO'}
@@ -324,13 +362,17 @@ class BUGMENU_OT_update_customdata(bpy.types.Operator):
                         key,value = line.split('=',1)
                         key,value = key.strip(), value.strip()
                         if key != '' and value != '':
+                            if value in ['1', 'true']: # Boolean for checkbox
+                                value = True
+                            elif value in ['0', 'false']:
+                                value = False
                             obj['WF_'+str(key)] = value
 
         if (bpy.app.version>=(2,80)): obj.select_set(state=True) #Refresh view
         return {'FINISHED'}
 
 class BUGMENU_OT_airoutes_from_curve(bpy.types.Operator):
-    """Generate Ai Routes From Curve  (Add > Curve > Path)
+    """Generate AI Routes From Curve  (Add > Curve > Path)
 \nRoute:
     Scale to set width:    S
 \nRoute in edit mode:
@@ -340,7 +382,7 @@ class BUGMENU_OT_airoutes_from_curve(bpy.types.Operator):
     Flatten:                 A, S, Z, 0, Enter """
 
     bl_idname = "bugmenu.routes_from_curve"
-    bl_label = "1. Generate Ai Routes From Curve"
+    bl_label = "1. Generate AI Routes From Curve"
     bl_options = {'REGISTER', 'UNDO'}  # Enable undo for the operator. Also prevents Undo crash in B 2.93
 
     @classmethod
@@ -656,7 +698,9 @@ def draw_bugmenu(self, context):
 
 classes = (
     BUGMENU_MT_menu,
-    BUGMENU_MT_repair,
+    BUGMENU_MT_bmapcache,
+    BUGMENU_MT_special,
+    BUGMENU_MT_experimental,
     BUGMENU_MT_airoutes,
     BUGMENU_MT_set_shader,
     BUGMENU_MT_set_material,
@@ -665,6 +709,7 @@ classes = (
     OBJECT_OT_copy_customdata,
     BUGMENU_OT_runbagedit,
     BUGMENU_OT_repair_customdata,
+    BUGMENU_OT_replace_objects,
     BUGMENU_OT_update_customdata,
     BUGMENU_OT_airoutes_from_curve,
     BUGMENU_OT_apply_modifier,
@@ -672,7 +717,15 @@ classes = (
     BUGMENU_OT_setzerospec,
 )
 
+# global variable to store icons in
+bugmenu_icons = None
+
 def register():
+    global bugmenu_icons
+    bugmenu_icons = bpy.utils.previews.new()
+    icons_dir = os.path.join(os.path.dirname(__file__), "icons")
+    #bugmenu_icons.load("replace_objects", os.path.join(icons_dir, "replace_objects.png"), 'IMAGE')
+
     for cls in classes:
         bpy.utils.register_class(cls)
     if (bpy.app.version>=(2,80)):
@@ -682,6 +735,9 @@ def register():
         bpy.types.INFO_HT_header.append(draw_bugmenu)
 
 def unregister():
+    global bugmenu_icons
+    bpy.utils.previews.remove(bugmenu_icons)
+
     for cls in reversed(classes):
         bpy.utils.unregister_class(cls)
     if (bpy.app.version>=(2,80)):
