@@ -12,7 +12,7 @@
 bl_info = {  
     "name": "Import Bugbear SCNE format (.scne/.vhcl/.vhcm)",  
     "author": "Mazay, Cartoons",  
-    "version": (1, 0, 3),  
+    "version": (1, 0, 4),  
     "blender": (2, 80, 0),  
     "location": "File > Import",  
     "description": "Imports Wreckfest SCNE, VHCL and VHCM files",  
@@ -1049,7 +1049,6 @@ def make_models(get,filepath,short_pth,imp_anim,imp_mat,imp_tga,debug,imp_shpe=F
 
         get.checkHeader('pmsh') # Base Mesh
         version = get.i() #1 version
-        numBaseMesh = 0
         numBaseMesh = get.i()
         for y in range(0, numBaseMesh):
             get.aabb()
@@ -1061,9 +1060,8 @@ def make_models(get,filepath,short_pth,imp_anim,imp_mat,imp_tga,debug,imp_shpe=F
 
         get.checkHeader('pmsh') # Damage Mesh
         version = get.i() #1 version
-        numBaseMesh = 0
-        numBaseMesh = get.i()
-        for y in range(0, numBaseMesh):
+        numDmgMesh = get.i()
+        for y in range(0, numDmgMesh):
             get.aabb()
             if(get.checkHeader('mesh')): # If = Check against empty section in place of mesh, Mainmesh
                 make_meshes(get,filepath,imp_mat,matrix,modelname,imp_tga)
