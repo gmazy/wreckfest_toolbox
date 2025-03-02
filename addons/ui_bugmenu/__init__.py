@@ -77,7 +77,7 @@ class BUGMENU_MT_special(bpy.types.Menu):
         global bugmenu_icons
         layout = self.layout
         layout.scale_y = 1.3
-        #layout.operator("bugmenu.replace_objects", icon_value=bugmenu_icons["replace_objects"].icon_id)
+        layout.operator("bugmenu.replace_objects", icon_value=bugmenu_icons["replace_objects"].icon_id)
         layout.operator("bugmenu.repair_customdata", icon='LIBRARY_DATA_BROKEN')
         if (bpy.app.version>=(2,80)):
             #layout.separator()
@@ -290,8 +290,33 @@ class BUGMENU_OT_replace_objects(bpy.types.Operator):
         return len(bpy.context.selected_objects) > 0
 
     def execute(self, context):
-        print("Replacing")
+        # Ensure at least two objects are selected.
+        selected_objs = bpy.context.selected_objects
+        if len(selected_objs) < 2:
+            print("Please select at least two objects (one to replace the others).")
+        else:
+            # The active object is the data source for the replacement.
+            replacement_obj = bpy.context.view_layer.objects.active
 
+            # Loop through a copy of the selected objects.
+            for obj in selected_objs.copy():
+                if obj == replacement_obj:
+                    continue
+
+                # Create a full, independent copy of the replacement object.
+                new_obj = replacement_obj.copy()
+                if replacement_obj.data:
+                    new_obj.data = replacement_obj.data.copy()
+                new_obj.animation_data_clear()
+
+                # Set the new object's transformation to match the object being replaced.
+                new_obj.matrix_world = obj.matrix_world
+
+                # Link the new object to the current collection.
+                bpy.context.collection.objects.link(new_obj)
+
+                # Remove the original object.
+                bpy.data.objects.remove(obj, do_unlink=True)
         return {'FINISHED'}
 
 
@@ -724,7 +749,7 @@ def register():
     global bugmenu_icons
     bugmenu_icons = bpy.utils.previews.new()
     icons_dir = os.path.join(os.path.dirname(__file__), "icons")
-    #bugmenu_icons.load("replace_objects", os.path.join(icons_dir, "replace_objects.png"), 'IMAGE')
+    bugmenu_icons.load("replace_objects", os.path.join(icons_dir, "replace_objects.svg"), 'IMAGE')
 
     for cls in classes:
         bpy.utils.register_class(cls)
