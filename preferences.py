@@ -140,7 +140,7 @@ class WreckfestToolboxAddonPreference(bpy.types.AddonPreferences):
         layout = self.layout
 
         row = layout.row(align=True)
-        row.alert = not path.isfile(path.join(self.wf_path,'Wreckfest.exe'))
+        row.alert = not path.isfile(path.join(self.wf_path, 'tools', 'bgeometry.exe'))
         row.prop(self, "wf_path")
 
         row = layout.row()
