@@ -359,22 +359,22 @@ def create_mesh_ob(name, verts, faces, meshname='', collection='', matrix='', re
     if matrix != '':
         ob.matrix_world = matrix
 
-    # Create material from colorname
-    if (color != ''):
-        if (colorname != ''):
-            if (colorname in bpy.data.materials):  mat = bpy.data.materials.get(colorname)
-            else: mat = bpy.data.materials.new(colorname)
+    # Create new material or use existing
+    if (color != '' and colorname != ''):
+        if (colorname in bpy.data.materials):
+            mat = bpy.data.materials.get(colorname)
         else:
-            mat = bpy.data.materials.new("route")           
-        mat.diffuse_color = color
+            mat = bpy.data.materials.new(colorname)
+            mat.diffuse_color = color
+            if(use_nodes):
+                mat.use_nodes = True
+                node = mat.node_tree.nodes["Principled BSDF"]
+                node.inputs[0].default_value = color[0], color[1], color[2], 1
+                node.inputs['Alpha'].default_value = color[3]
+                if(color[3]<1):
+                    mat.blend_method = 'BLEND'
         ob.active_material = mat
-        if(use_nodes):
-            mat.use_nodes = True
-            node = mat.node_tree.nodes["Principled BSDF"]
-            node.inputs[0].default_value = color[0], color[1], color[2], 1
-            node.inputs['Alpha'].default_value = color[3]
-            if(color[3]<1):
-                mat.blend_method = 'BLEND'
+
 
     link_to_collection(ob, collection)
     if(reset_origin): origin_to_geometry(ob)
