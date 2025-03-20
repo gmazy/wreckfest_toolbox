@@ -19,7 +19,12 @@ bl_info = {
     "warning": "",  
     "wiki_url": "",  
     "tracker_url": "",  
-    "category": "Import-Export"}  
+    "category": "Import-Export"}
+
+class config():
+    # Bmap Cache Configuration
+    c_resolution = 1500 # Cache image maximum resolution, 1024, 2048 etc.
+    c_extension = 'cmap' # Cache image extension, 'cmap' or 'webp'
 
 import bpy
 import os
@@ -65,7 +70,8 @@ class io_import_wreckfest(AddonPreferences):
     def draw(self, context):
         layout = self.layout
         layout.prop(self, "breckfestPath")
-        
+  
+# ------------------------------ Operators ------------------------------ #      
 
 class ImportScneData(bpy.types.Operator, ImportHelper):
     '''Imports Wreckfest SCNE or VHCL file'''
@@ -171,6 +177,36 @@ class ImportScneDataPh(bpy.types.Operator, ImportHelper):
         context.window_manager.fileselect_add(self)
         return {'RUNNING_MODAL'}
 
+class ImportBmapData(bpy.types.Operator, ImportHelper):
+    '''Imports Wreckfest SCNE as Subscene Placeholder'''
+    bl_idname = "import_scene.bmap"  # this is important since its how bpy.ops.import.some_data is constructed
+    bl_label = "Import Bmap"
+    bl_options = {"UNDO"}
+
+    # ExportHelper mixin class uses this
+    filename_ext = ".bmap"
+
+    filter_glob : StringProperty(default="*.bmap", options={'HIDDEN'})  
+    
+    # Selected files
+    directory: bpy.props.StringProperty(subtype='FILE_PATH', options={'SKIP_SAVE'})
+    files : bpy.props.CollectionProperty(type=bpy.types.OperatorFileListElement, options={'SKIP_SAVE'})
+
+    def execute(self, context):
+        folder = (os.path.dirname(self.filepath))
+        for i, file in enumerate(self.files):
+            if file.name != '':
+                path_and_file = (os.path.join(folder, file.name))
+                import_bmap(context, path_and_file)
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+        '''Invoke file handler if filepath is set (Drag & Drop)'''
+        if self.files:
+            return self.execute(context)
+        context.window_manager.fileselect_add(self)
+        return {'RUNNING_MODAL'}
+
 if bpy.app.version >= (4,1,0):
     class WM_FH_scne(bpy.types.FileHandler): # https://docs.blender.org/api/master/bpy.types.FileHandler.html
         '''Drag & Drop Handler for .vhcl'''
@@ -192,6 +228,85 @@ if bpy.app.version >= (4,1,0):
         def poll_drop(cls, context):
             return context.area.type == "VIEW_3D"
 
+    class WM_FH_bmap(bpy.types.FileHandler):
+        '''Drag & Drop Handler for .bmap'''
+        bl_label = "File handler for bmap node import"
+        bl_import_operator = "import_scene.bmap"
+        bl_file_extensions = ".bmap"
+
+        @classmethod
+        def poll_drop(cls, context):
+            return ( # Drag and Drop to Shader Editor if active material
+                context.region and context.region.type == 'WINDOW' and
+                context.area and context.area.ui_type == 'ShaderNodeTree' and
+                bpy.context.active_object and
+                bpy.context.active_object.data.materials.items()
+            )
+
+class IMPORT_SCENE_OT_repair_bmapcache(bpy.types.Operator):
+    """Repair Bmap Cache
+\nChange all cached images location to Wreckfest\\tools\\BmapCache\\ and rebuild missing"""
+    bl_idname = "import_scene.repair_bmapcache"
+    bl_label = "Repair Bmap Cache"
+
+    rebuild_all : BoolProperty(default=False) # Forces Relocate and rebuild
+
+    @classmethod
+    def poll(cls, context):
+        try:
+            return os.path.isdir(os.path.join(bpy.context.preferences.addons['wreckfest_toolbox'].preferences.wf_path,'tools'))
+        except:
+            return 0
+
+    def execute(self, context):
+        wf_path = bpy.context.preferences.addons['wreckfest_toolbox'].preferences.wf_path
+        bmapcache = '\\tools\\BmapCache\\'
+        bmapcache_folder = os.path.join(wf_path, bmapcache.strip('\\'))
+
+        print ("\nRepairing Bmap Cache - ",bmapcache_folder,'\n')
+        
+         # load indicator
+        wm = bpy.context.window_manager
+        wm.progress_begin(0, len(bpy.data.images))
+        count = 0
+
+        # Find and repair Bmap Cache textures, detect by location in \tools\BmapCache\
+        for image in bpy.data.images:
+            count +=1
+            wm.progress_update(count) # Update load indicator
+            path = image.filepath.replace('/','\\')
+            if bmapcache in path:
+                rel_path = path.split(bmapcache)[-1]
+                print (image.name,'-',rel_path, end='')
+                if not self.rebuild_all and os.path.isfile(image.filepath):
+                    print(" - OK")
+                else:
+                    # Relocate
+                    new_path = os.path.join(bmapcache_folder, rel_path)
+                    new_path = os.path.splitext(new_path)[0]+'.'+config.c_extension
+                    if (new_path != path):
+                        print(" -> RELOCATE")
+                        image.filepath = new_path
+                    # Reload only
+                    if not self.rebuild_all and os.path.isfile(image.filepath):  
+                        image.reload()
+                    else: # Rebuild
+                        print(" -> REBUILD")
+                        bmapfile = os.path.join(wf_path, os.path.splitext(rel_path)[0]+'.bmap')
+
+                        if os.path.isfile(bmapfile):
+                            if os.path.isfile(new_path) and new_path[-5:] in ['.webp', '.cmap']:
+                                os.remove(new_path) # Delete existing .webp
+                            convert_bmap_file_to_image( bmapFile=bmapfile, tgaPath=new_path, quality=90, resolution=config.c_resolution, file_format='WEBP')
+                            if os.path.isfile(image.filepath):
+                                image.reload()
+                            else:
+                                print("REBUILD FAILED:")
+                                print("INPUT:",bmapfile)
+                                print("OUTPUT:",new_path)
+                    print('\n')
+        wm.progress_end()
+        return {'FINISHED'}
 
 def breckfest_locate():
     if 'wreckfest_toolbox' in __name__: # Installed as part of toolbox
@@ -208,18 +323,24 @@ def register():
     '''Only function Bblender calls on load'''
     bpy.utils.register_class(ImportScneData)
     bpy.utils.register_class(ImportScneDataPh)
+    bpy.utils.register_class(ImportBmapData)
+    bpy.utils.register_class(IMPORT_SCENE_OT_repair_bmapcache)
     if bpy.app.version >= (4,1,0):
         bpy.utils.register_class(WM_FH_scne)
         bpy.utils.register_class(WM_FH_scneph)
+        bpy.utils.register_class(WM_FH_bmap)
     bpy.types.TOPBAR_MT_file_import.append(menu_func_import)
     bpy.utils.register_class(io_import_wreckfest)
 
 def unregister():
     bpy.utils.unregister_class(ImportScneData)
     bpy.utils.unregister_class(ImportScneDataPh)
+    bpy.utils.unregister_class(ImportBmapData)
+    bpy.utils.register_class(IMPORT_SCENE_OT_repair_bmapcache)
     if bpy.app.version >= (4,1,0):
         bpy.utils.unregister_class(WM_FH_scne)
         bpy.utils.unregister_class(WM_FH_scneph)
+        bpy.utils.unregister_class(WM_FH_bmap)
     bpy.types.TOPBAR_MT_file_import.remove(menu_func_import)
     bpy.utils.unregister_class(io_import_wreckfest)
 
@@ -478,49 +599,52 @@ def fix_lod(string):
     if __name__+'.uv' in sys.modules: return string
     return re.sub('(?i)[_#](lod)[0-9]', '', string) 
 
-def save_image(image, filename, format):
+def save_image(image, filename, format, quality=90):
     '''Save image from bpy.data.images to disk'''
     print('Saving   : ',filename)
     os.makedirs(os.path.dirname(filename), exist_ok=True) 
 
     s = bpy.context.scene.render.image_settings
-    backup = s.file_format, s.color_mode # Backup
+    backup = s.file_format, s.color_mode, s.quality # Backup
     s.file_format = format # Change format temporarily for saving
     s.color_mode = 'RGBA'
+    s.quality = quality
     image.save_render(filename)
-    s.file_format, s.color_mode = backup # Restore
+    s.file_format, s.color_mode, s.quality = backup # Restore
 
-def convert_bmap_file_to_tga(bmapFile, tgaPath):
-    '''Open .bmap file on disk and save as .tga'''
-    if(bmapFile.split('_')[-1].lower() in ['c.bmap', 'c1.bmap', 'c5.bmap']): #Allowed extensions
-        breckfest_location = breckfest_locate()
-        tempFolder = tempfile.gettempdir() # Windows: C:\users\user\AppData\Local\Temp 
-        exe_str = breckfest_location+' "'+bmapFile+'"'
-        print(exe_str,'\n')
-        if os.path.isfile(breckfest_location) and not os.path.isfile(tgaPath):
-            subprocess.run(exe_str,  cwd = tempFolder, timeout = 60) # run = wait for Breckfest to finish, cwd = folder of unpack 
+def convert_bmap_file_to_image(bmapFile, tgaPath, quality=90, resolution=256, file_format='TARGA'):   
+    '''Open .bmap file on disk and save as .tga or .webp'''
+    # File_formats: https://docs.blender.org/api/current/bpy_types_enum_items/image_type_items.html#rna-enum-image-type-items
+    breckfest_location = breckfest_locate()
+    tempFolder = tempfile.gettempdir() # Windows: C:\users\user\AppData\Local\Temp 
+    exe_str = '"'+breckfest_location+'" "'+bmapFile+'"'
+    print(exe_str,'\n')
+    if os.path.isfile(breckfest_location) and not os.path.isfile(tgaPath):
+        subprocess.run(exe_str,  cwd = tempFolder, timeout = 60) # run = wait for Breckfest to finish, cwd = folder of unpack 
 
-            noExtension = tempFolder +'\\'+ bmapFile.split('\\')[-1][:-5] 
+        noExtension = tempFolder +'\\'+ bmapFile.split('\\')[-1][:-5] 
 
-            for ext in ['.dxt1.png', '.dxt5.png']: # Check if Breckfest unpacked file found.
-                if os.path.isfile(noExtension + ext):
-                    foundPng = noExtension + ext
-                    image = bpy.data.images.load(foundPng) # check_existing=True
-                    break
-            else: # File not found, exiting
-                return 
+        for ext in ['.dxt1.png', '.dxt5.png', '.ati2.png']: # Check if Breckfest unpacked file found.
+            if os.path.isfile(noExtension + ext):
+                foundPng = noExtension + ext
+                image = bpy.data.images.load(foundPng) # check_existing=True
+                image.colorspace_settings.name = 'Non-Color' # Keeps colors intact during save.
+                break
+        else: # File not found, exiting
+            print("Error: Breckfest generated file not found.")
+            return 
 
-            # Resize image
-            x, y = image.size
-            while(x*y > 257*257):
-                x = x/2
-                y = y/2
-            if not __name__+'.uv' in sys.modules:
-                image.scale(int(x),int(y))
+        # Resize image
+        x, y = image.size
+        while(x*y > resolution*resolution):
+            x = x/2
+            y = y/2
+        if not __name__+'.uv' in sys.modules:
+            image.scale(int(x),int(y))
 
-            if not os.path.isfile(tgaPath): save_image(image, tgaPath, 'TARGA') # Save .tga
-            os.remove(foundPng) # delete png file made by Breckfest
-            bpy.data.images.remove(image) # remove file from Blender memory
+        if not os.path.isfile(tgaPath): save_image(image, tgaPath, file_format, quality)
+        os.remove(foundPng) # delete png file made by Breckfest
+        bpy.data.images.remove(image) # remove file from Blender memory
 
 def image_refer(fileName, fullPath):
     '''Image loading for images that may not exist yet'''
@@ -650,7 +774,8 @@ def add_wf_material(txtrList,matName,filepath,spec,gloss,imp_tga,textureUV,textu
 
                     # Save tga files on disk
                     if(imp_tga and '\\data\\' in blendFolder and '\\mods\\' in blendFolder):
-                        convert_bmap_file_to_tga( bmapFile=dataFolderImport+bmapPath, tgaPath=dataFolderBlend+tgaPath )
+                        if(bmapPath.split('_')[-1].lower() in ['c.bmap', 'c1.bmap', 'c5.bmap']): #Allowed extensions
+                            convert_bmap_file_to_image( bmapFile=dataFolderImport+bmapPath, tgaPath=dataFolderBlend+tgaPath )
 
                     # Link in Shader Node new image datablock with relative reference to file
                     imageNode.image = image_refer(fileName, fullPath=bpy.path.relpath(dataFolder+tgaPath,start=relativeTo)) 
@@ -1127,7 +1252,6 @@ def make_models(get,filepath,short_pth,imp_anim,imp_mat,imp_tga,debug,imp_shpe=F
             get.i() # version
             numAnim = get.i() # Number of Animations
             for x in range(0, numAnim):
-
                 get.checkHeader('kfra')
                 get.i() # version
                 numKfra = get.i() # Number of keyframes
@@ -1963,6 +2087,71 @@ def breckfest_uncompress(filepath):
         elif (os.path.getsize(filepath)>6590000): popup('Breckfest uncompress failed. Possibly too large filesize. \n '+filepath)
         else: popup('Breckfest uncompress failed! \n '+str(filepath))
         create_fallback_model(filepath)
+
+def autolink_node(node_tree, node_to_link):
+    '''Automatically link texture to inputs in #pbr shader node'''
+    input_map = {'c': 1, 'c1': 1, 'c5': 1, 'ao': 7, 'n': 8, 's': 9}
+    suffix = os.path.splitext(node_to_link.image.name)[0].rsplit('_',maxsplit=1)[-1]
+    if suffix in input_map:
+        # Find #pbr node
+        pbrNode = None
+        for node in node_tree.nodes:
+            if node.type=='GROUP' and '#pbr' in node.node_tree.name:
+                pbrNode = node
+                break
+        # Link
+        if pbrNode:
+            node_tree.links.new(pbrNode.inputs[input_map[suffix]], node_to_link.outputs['Color'])
+
+            if suffix in ['c1', 'c5']:
+                 node_tree.links.new(pbrNode.inputs[13], node_to_link.outputs['Alpha'])
+
+def import_bmap(context, filepath):
+    print("Importing Bmap from ",filepath)
+
+    filepath = filepath.replace('/','\\')
+    fileName = filepath.split('\\')[-1]
+
+    # Path of webp file in Bmap Cache
+    wf_path = bpy.context.preferences.addons['wreckfest_toolbox'].preferences.wf_path
+    relpath = "data\\" + re.split(r'\\data\\', filepath)[-1] # remove everything before /data/
+    bmapcache_path = os.path.join(wf_path, 'tools', 'BmapCache', relpath[:-5] + '.' + config.c_extension) # Bmap cache in Wreckfest/tools/BmapCache
+
+    mat = bpy.context.active_object.active_material
+
+    # Count existing image nodes
+    number_of_nodes = 0
+    for node in mat.node_tree.nodes:
+        if node.type=='TEX_IMAGE':
+            number_of_nodes += 1
+
+    # Create image node
+    imageNode = mat.node_tree.nodes.new('ShaderNodeTexImage')
+    imageNode.hide = True # Collapse node
+    nodeXLocation = -300 - math.floor(number_of_nodes/10) * 250 # New colums each 10 nodes 250 on left
+    nodeYLocation = 250 - (number_of_nodes%10) * (50 if number_of_nodes<10 else 40)
+    imageNode.location = (nodeXLocation,nodeYLocation)
+    mat.node_tree.nodes.active = imageNode
+
+    # Add image to node
+    pngfile = filepath[:-5] + '.png'
+    tgafile = filepath[:-5] + '.tga'
+    in_mods = '\\mods\\' in filepath 
+    if in_mods and os.path.isfile(pngfile): # Use existing png if available
+        imageNode.image = image_refer(fileName[:-5]+'.png', fullPath=pngfile)
+    elif in_mods and os.path.isfile(tgafile): # Use existing tga if available
+        imageNode.image = image_refer(fileName[:-5]+'.tga', fullPath=tgafile)
+    elif (fileName in bpy.data.images and bpy.data.images[fileName].filepath == bmapcache_path): # Use existing image from Blender if available
+        imageNode.image = bpy.data.images.get(fileName) 
+    else: # Make new image
+
+        # Convert and save webp file on disk
+        convert_bmap_file_to_image( bmapFile=filepath, tgaPath=bmapcache_path, quality=90, resolution=config.c_resolution, file_format='WEBP')
+
+        # Link in Shader Node image datablock
+        imageNode.image = image_refer(fileName, fullPath=bmapcache_path)
+
+    autolink_node(node_tree=mat.node_tree, node_to_link=imageNode) 
 
 
 def read_scne(context, filepath, short_pth=False, use_color=False, imp_model=False, imp_shpe=False, imp_anim=False, imp_mat=False, placeholder_mode=False,
