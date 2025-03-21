@@ -394,20 +394,22 @@ class WFTB_OP_export_bgo(bpy.types.Operator):
                 self.write_texture_node_individual(tex_nodes[tn], 1, file)  # default to slot 1
 
     def write_nodegroup_node(self, node, mat, file):
-        # Create a list of linked TEX_IMAGE Node
+        # Create a list of linked Image Texture nodes
         tex_nodes = []
 
+        max_inputs = 16 if "#wf2" in node.node_tree.name.lower() else 12
+
         # Go through nodegroup node inputs
-        node_id = -1
+        input_id = -1
         for sh_in in node.inputs:
-            node_id += 1
-            # Export only image textures linked to 12 first inputs
-            if node_id < 12 and sh_in.is_linked:
+            input_id += 1
+            # Export only image textures linked to first inputs
+            if input_id < max_inputs and sh_in.is_linked:
                 image_node = sh_in.links[0].from_socket.node
                 if image_node.type == 'TEX_IMAGE' and image_node.image:
                     tn = {}
                     tn["node"] = sh_in.links[0].from_socket.node
-                    tn["id"] = node_id
+                    tn["id"] = input_id
                     tex_nodes += (tn),
 
         # Write len of linked Tex Nodes
