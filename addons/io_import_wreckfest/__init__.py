@@ -784,10 +784,11 @@ def add_wf_material(txtrList,matName,filepath,spec,gloss,imp_tga,textureUV,textu
                 if not NodeGroupShader.loaded: # Principled BSDF
                     mat.node_tree.links.new(bsdfNode.inputs[wf_bsdf_slots[key]], imageNode.outputs['Color'])
                 else: # Shader Nodegroup
-                    mat.node_tree.links.new(wftbNode.inputs[key], imageNode.outputs['Color'])
-                    # Connect alpha of second texture to special nodegroup alpha
-                    if(key==1 and not "#blend" in matName.lower() and ('_c1.' in tgaPath or '_c5.' in tgaPath)):
-                        mat.node_tree.links.new(wftbNode.inputs['Alpha'], imageNode.outputs['Alpha'])
+                    if len(wftbNode.inputs) > key:
+                        mat.node_tree.links.new(wftbNode.inputs[key], imageNode.outputs['Color'])
+                        # Connect alpha of second texture to special nodegroup alpha
+                        if(key==1 and not "#blend" in matName.lower() and ('_c1.' in tgaPath or '_c5.' in tgaPath)):
+                            mat.node_tree.links.new(wftbNode.inputs['Alpha'], imageNode.outputs['Alpha'])
 
                 # #blend scale mapping and uv node links
                 if("#blend" in matName.lower()):
@@ -839,7 +840,7 @@ def make_meshes(get,filepath,imp_mat,matrix,modelName,imp_tga):
             maxX, maxZ, maxY = get.f(), get.f(), get.f() #BBox Max
 
             get.checkHeader('mtrl')
-            matversion = get.i() # version: rru 4, wf 7
+            matversion = get.i() # version: rru 4, wf 7, wf2 18
             numMtrl = get.i()
             if(numMtrl != 0): # Check only first material
                 matName = get.wftext()
@@ -965,13 +966,14 @@ def make_meshes(get,filepath,imp_mat,matrix,modelName,imp_tga):
                 triMatIdlist.append(currentMatId)
             voffset = voffset + numVert
 
-            get.checkHeader('edgm')
-            get.i() # version
-            for v in range(0, get.i()):
-                get.wfdata()
-                get.wfdata()
-                get.wfdata()
-                get.wfdata()
+            if(matversion<18):
+                get.checkHeader('edgm')
+                get.i() # version
+                for v in range(0, get.i()):
+                    get.wfdata()
+                    get.wfdata()
+                    get.wfdata()
+                    get.wfdata()
 
     if(numMesh>0): # Only real mesh, Shadowmeshes may not have actual mesh
         ob = create_mesh_ob(fix_lod(meshName), verts, triangles, meshname=meshName, matrix=matrix, collection="Models", reset_origin=False, subCollection=True)
@@ -1153,7 +1155,7 @@ def make_shape(shpedata, modelname, matrix, debug):
 
 def make_models(get,filepath,short_pth,imp_anim,imp_mat,imp_tga,debug,imp_shpe=False):
     '''MODELS import'''
-    mdl_version = get.i() # version: rru 0, wf 5
+    mdl_version = get.i() # version: rru 0, wf 5, wf2 6
     nummdl = get.i() # number of models
     print ("\nFound",nummdl,"Models")
     wm = bpy.context.window_manager

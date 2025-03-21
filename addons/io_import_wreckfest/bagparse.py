@@ -52,7 +52,7 @@ class BagParse:
         header_r = header.encode()  #encode to bytes
         while self.skipTo(header_r):
             version = self.i(4)
-            if version>=0 and version<20: #valid version number follows header
+            if version>=0 and version<70: #valid version number follows header
                 self.p -= 4 #undo pointer move
                 return #Proper header found
         popup("Import failed, header not found: "+str(header))
