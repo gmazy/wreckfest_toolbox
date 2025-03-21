@@ -1756,7 +1756,8 @@ def make_airoutes(get,debug=False):
         route[-2] = expand_vert(route[-2],route[-4],dist)
         return route
 
-    get.i() # version
+    version = get.i() # version: WF1=0, WF2=1
+    WF2 = (version>0)
     num = get.i() # number of airoutes (1=if not alt routes)
     print ("Found",num,"Airoutes")
     for route in range(0, num):
@@ -1778,9 +1779,13 @@ def make_airoutes(get,debug=False):
             L = flip_yz(get.f(), get.f(), get.f()) # Blue Border sector x,y,z
             R = flip_yz(get.f(), get.f(), get.f())
             LSafe = route_position(get.f(), L, R) # Safe Line sector x,y,z
+            if(WF2): u1 = get.f()
             RSafe = route_position(get.f(), L, R) 
+            if(WF2): u2 = get.f()
             LRace = route_position(get.f(), L, R) # Race Line sector x,y,z
+            if(WF2): u3 = get.f()
             RRace = route_position(get.f(), L, R)
+            if(WF2): u4 = get.f()
 
             verts += L, R,
             vertsSafe += LSafe, RSafe,
@@ -1792,9 +1797,15 @@ def make_airoutes(get,debug=False):
                 label.show_name = True
                 label.show_in_front = True
 
+            if(WF2):
+                u5 = get.i()
+
         startIdMainrt = get.i() # Start Index Of Mainroute Sector
         endIdMainrt = get.i() # End Index Of mainroute sector
-        get.wftext() # Custom property, empty.  
+        get.wftext() # Custom property, empty.
+
+        if(WF2):
+            unknown = get.i(), get.f(), get.i(), get.f(), get.i(), get.i(), get.i(), get.i(), get.i(), get.i(), get.i()
             
         vertsSafe = expand_route(vertsSafe, dist=0.25)
         vertsRace = expand_route(vertsRace, dist=0.5)
@@ -1843,12 +1854,15 @@ def make_checkpoints(get):
         middleX, middleZ, middleY = get.f(), get.f(), get.f()
         LX, LZ, LY = get.f(), get.f(), get.f()
         RX, RZ, RY = get.f(), get.f(), get.f()
-        
+        unknown=0
+        if version >= 5: #WF2
+            unknown = get.i(4)
         cpname = "#checkpoint"
         cpname += "{0:0>2}".format(cp+1)
         if(isSplit>0): cpname += "_split"
         if(rtIndex>0): cpname += "_alt"+str(rtIndex)
         if(altRoutePrx>-1): cpname += "_proxy"+str(altRoutePrx)
+        if(unknown>0): cpname += "_???"+str(unknown)
 
         if(version>3):
             verts = ((LX,LY,LZ+5), (RX,RY,RZ+5), (RX,RY,(RZ-5)), (LX,LY,(LZ-5)))
