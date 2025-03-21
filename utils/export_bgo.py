@@ -395,8 +395,8 @@ class WFTB_OP_export_bgo(bpy.types.Operator):
         node_id = -1
         for sh_in in node.inputs:
             node_id += 1
-            # Export only image textures linked to 12 first inputs
-            if node_id < 12 and sh_in.is_linked:
+            # Export only image textures linked to 16 first inputs
+            if node_id < 16 and sh_in.is_linked:
                 image_node = sh_in.links[0].from_socket.node
                 if image_node.type == 'TEX_IMAGE' and image_node.image:
                     tn = {}
