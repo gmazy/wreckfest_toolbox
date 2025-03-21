@@ -2084,6 +2084,8 @@ def breckfest_uncompress(filepath):
     else: # Breckfest failed to uncompress:
         with open(filepath, 'rb') as f: header = f.read(4)
         if (header == b'\x08\x00\x00\x00'): popup('ERROR: File is encrypted! \n '+filepath)
+        elif (header == b'\x07\x00\x00\x00'): popup('ERROR: WF2 file must be decompressed with Bag-decompress first! \n '+filepath)
+        elif (header == b'\x0A\x00\x00\x00'): popup('ERROR: WF2 file must be decompressed with Bag-decompress first! \n '+filepath)
         elif (os.path.getsize(filepath)>6590000): popup('Breckfest uncompress failed. Possibly too large filesize. \n '+filepath)
         else: popup('Breckfest uncompress failed! \n '+str(filepath))
         create_fallback_model(filepath)
@@ -2164,16 +2166,20 @@ def read_scne(context, filepath, short_pth=False, use_color=False, imp_model=Fal
     if(filepath.split('//')[-1] == ''): return {'FINISHED'} # not file selected
     if(model_onlyupd and bpy.data.meshes.get(hashy(to_wf_path(filepath))) is None): return {'FINISHED'} # not mesh update to missing models
 
-    with open(filepath, 'rb') as f: # Check file header
-        header = f.read(4).decode()
-        rruFormat = True if header=='scne' or header=='vhcl' else False
-    
-    if(filepath[-4:] == ".raw" or rruFormat): # Already uncompressed file
-        with open(filepath, 'rb') as f:
+    with open(filepath, 'rb') as f:
+        # Check file header
+        header = f.read(4)
+        f.seek(0)
+        format01 = (header==b'\x01\x00\x00\x00')
+        rruFormat = (header==b'scne' or header==b'vhcl')
+        uncompressed = (filepath[-4:]==".raw" or rruFormat or format01)
+        # Uncompressed file
+        if uncompressed:
             get = BagParse(f.read()) 
+            if format01: get.skip(12) # Skip lz4 header
             if rruFormat: get.endian = '>' # Change endianess
-    else: 
-        # Uncompress and handle file with BagParse
+    # Compressed file
+    if not uncompressed: 
         get = BagParse(breckfest_uncompress(filepath)) 
 
 
