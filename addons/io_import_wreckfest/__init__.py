@@ -1185,7 +1185,7 @@ def make_models(get,filepath,short_pth,imp_anim,imp_mat,imp_tga,debug,imp_shpe=F
             get.aabb()
             if(get.checkHeader('mesh')): # If = Check against empty section in place of mesh, Mainmesh
                 ob = make_meshes(get,filepath,imp_mat,matrix,modelname,imp_tga) # Base mesh to ob to add animations later
-            if(version > 0):
+            if(version > 0 and mdl_version < 6):
                 if(get.checkHeader('mesh')): # Shadowmesh
                     make_meshes(get,filepath,imp_mat,matrix,modelname,imp_tga)
 
@@ -1196,7 +1196,7 @@ def make_models(get,filepath,short_pth,imp_anim,imp_mat,imp_tga,debug,imp_shpe=F
             get.aabb()
             if(get.checkHeader('mesh')): # If = Check against empty section in place of mesh, Mainmesh
                 make_meshes(get,filepath,imp_mat,matrix,modelname,imp_tga)
-            if(version > 0):
+            if(version > 0 and mdl_version < 6):
                 if(get.checkHeader('mesh')): # Shadowmesh
                     make_meshes(get,filepath,imp_mat,matrix,modelname,imp_tga)
 
