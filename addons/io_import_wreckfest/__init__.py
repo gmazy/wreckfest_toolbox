@@ -1156,6 +1156,10 @@ def make_shape(shpedata, modelname, matrix, debug):
 def make_models(get,filepath,short_pth,imp_anim,imp_mat,imp_tga,debug,imp_shpe=False):
     '''MODELS import'''
     mdl_version = get.i() # version: rru 0, wf 5, wf2 6
+
+    if mdl_version >= 6: # Disable models import for Wreckfest 2
+        return
+
     nummdl = get.i() # number of models
     print ("\nFound",nummdl,"Models")
     wm = bpy.context.window_manager
