@@ -1308,7 +1308,7 @@ def make_models(get,filepath,short_pth,imp_anim,imp_mat,imp_tga,debug,imp_shpe=F
 
                     # Rename model vertex groups to correct names
                     if(ob!='' and str(boneId) in ob.vertex_groups):
-                        ob.vertex_groups[boneId].name = name
+                        ob.vertex_groups[str(boneId)].name = name
 
                     if(debug): # Not finished, only in debug mode
                         # Add armature bones
