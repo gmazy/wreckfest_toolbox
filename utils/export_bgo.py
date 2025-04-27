@@ -541,6 +541,49 @@ class WFTB_OP_export_bgo(bpy.types.Operator):
         bm.free()
         self.write_filelen(gmesh_start_offset, file, -8)
 
+    def write_vgroup(self, ob, file):
+        skin_start_offset = self.create_header('SKIN', 0, file)
+
+        file.write(struct.pack('I', len(ob.vertex_groups))) # Number of Vertex Groups / Bones
+        len_vertices = len(ob.data.vertices)
+        print(len_vertices)
+        file.write(struct.pack('I', len_vertices)) # Number of Vertices
+
+        for vert in ob.data.vertices:
+            bone_refs = [0]*32 # Maximum 32
+            bone_weights = [0]*32 # Maximum 32
+
+            vert_groups = []
+            for group in vert.groups:
+                vert_groups += [group]
+            vert_groups = vert_groups[::-1] # Reverse
+
+            count = 0
+            for group in vert_groups:
+                group_id = group.group
+                bone_refs[count] = group_id+1
+                bone_weights[group_id] = group.weight
+                print(group_id, group.weight)
+                if count == 31:
+                    continue
+                count += 1
+
+            file.write(struct.pack('32I', *bone_refs))
+            file.write(struct.pack('I', 0)) #?
+            file.write(struct.pack('32f', *bone_weights))
+
+        for group in ob.vertex_groups:
+            if(group.name in bpy.data.objects):
+                print("local matrix")
+                self.write_flipped_matrix(bpy.data.objects[group.name].matrix_local, file)
+            else:
+                self.write_matrix(self.create_blank_matrix(), file)
+
+        for group in ob.vertex_groups:
+            self.write_cstring(group.name, file)
+
+        self.write_filelen(skin_start_offset, file)
+
     @staticmethod
     def get_keyframes(obj): # Get every keyframe. Subframes return as decimals.
         keyframes = []
@@ -663,7 +706,10 @@ class WFTB_OP_export_bgo(bpy.types.Operator):
         if ob.name.strip().startswith("#xref") or (ob.data is not None and ob.data.library is not None):
             return 'OBJX'
         if ob.type == 'MESH':
-            return 'OBJM'
+            if ob.vertex_groups:
+                return 'OSKN'
+            else:
+                return 'OBJM'
         if ob.type == 'EMPTY':
             return 'OBJD'
         return ''
@@ -718,6 +764,10 @@ class WFTB_OP_export_bgo(bpy.types.Operator):
             self.write_cstring(str(customdata).replace('|', '\r\n'), file)
             if object_type == 'OBJM':
                 file.write(struct.pack('I', objects_id_mesh))
+                self.write_gmesh(obj, file)
+            if object_type == 'OSKN':
+                file.write(struct.pack('I', 0))
+                self.write_vgroup(obj, file)
                 self.write_gmesh(obj, file)
             if object_type == 'OBJX':
                 if obj.name.strip().startswith("#xref"): # Xref Subscene (Unofficial)
