@@ -624,7 +624,7 @@ class WFTB_OP_export_bgo(bpy.types.Operator):
                             wfTime = round((frame - bpy.context.scene.frame_start) / fps * second) #time
                             if(wfTime<0): wfTime = 0 # bugfix for frames before frame_start
                             file.write(struct.pack('I', wfTime)) 
-                            self.write_flipped_matrix(obj.matrix_local, file) #transform matrix
+                            self.write_flipped_matrix(obj.matrix_world, file) #transform matrix
                     else: # Original keyframe data
                         file.write(struct.pack('I', len(keys))) #Number of keyframes
                         for frame in keys:
@@ -632,7 +632,7 @@ class WFTB_OP_export_bgo(bpy.types.Operator):
                             wfTime = round((frame - bpy.context.scene.frame_start) / fps * second) #time
                             if(wfTime<0): wfTime = 0 # bugfix for frames before frame_start
                             file.write(struct.pack('I', wfTime)) 
-                            self.write_flipped_matrix(obj.matrix_local, file) #transform matrix
+                            self.write_flipped_matrix(obj.matrix_world, file) #transform matrix
 
                     self.write_filelen(asmp_offset, file, 0)
                     self.write_filelen(anim_offset, file, 0)
