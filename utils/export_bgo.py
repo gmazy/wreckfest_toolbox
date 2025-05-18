@@ -597,20 +597,44 @@ class WFTB_OP_export_bgo(bpy.types.Operator):
         bpy.context.scene.frame_set(frame_before) #restore original frame selection
 
     @staticmethod
-    def find_xref_path(obname, exporting_to_path=""):  # Find xref path from object name
-        name = obname.replace('\\', '/')
+    def decode_xref_asterix(name): # Replace * in filename with parent folder name
+        split = name.rsplit('/', maxsplit=2)
+        if len(split)==3 and "*" in split[2]:
+            name = split[0] + '/' + split[1] + '/'
+            name += split[2].replace('*',split[1])
+        return name
+
+    @staticmethod
+    def find_xref_path(obj, exporting_to_path=""):  # Find xref path from object name
+        name = obj.name
+        # Replace tags etc
+        name = name.replace('\\', '/')
         name = name.replace("#xref", "")
         name = name.replace(" ", "")
-        name = name.rstrip('1234567890.')  # remove .001 from end
-        # replace ob/ and le/ shorts
+        name = name.rstrip('1234567890.')  # remove blender .001
+        # Use folder from custom property "xdir"
+        if not '/' in name and "xdir" in obj:
+            name = str(obj["xdir"]).rstrip('/')+'/'+name
+        # replace *, ob/ and le/ shorts
+        if '*' in name:
+            name = WFTB_OP_export_bgo.decode_xref_asterix(name)
         if name[:3].lower() == "ob/": name = "data/art/objects/" + name[3:]
         if name[:3].lower() == "le/": name = "data/art/levels/" + name[3:]
         if name[:2].lower() == "//": name = exporting_to_path + name[2:]
+        # Convert to 3 character extension
+        if name[-5]=='.':
+            name = name[:-1]
+        else:
+            name += '.scn'
         return name
 
     @staticmethod
     def fake_xref_name(name):  # fake 3dsmax style name
-        name = name.replace('\\', '/').split("/")[-1]
+        name = name.replace('\\', '/')
+        if '*' in name:
+            name = WFTB_OP_export_bgo.decode_xref_asterix(name)
+        name = name.replace("#xref ", "")
+        name = name.split("/")[-1]
         name = name.replace(".scne.", "#xref")
         name = name.replace(".scne", "#xref")
         return name
@@ -697,7 +721,7 @@ class WFTB_OP_export_bgo(bpy.types.Operator):
                 self.write_gmesh(obj, file)
             if object_type == 'OBJX':
                 if obj.name.strip().startswith("#xref"): # Xref Subscene (Unofficial)
-                    self.write_cstring(self.find_xref_path(obj.name)[:-5] + '.scn', file)
+                    self.write_cstring(self.find_xref_path(obj), file) # Write path with 3 character extension
                 else:  # File > link Subscene
                     apth = os.path.abspath(bpy.path.abspath(obj.data.library.filepath))
                     self.write_cstring(str(self.get_relative_texpath(apth.replace(".blend", ".ble"))), file)

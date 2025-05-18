@@ -12,7 +12,7 @@
 bl_info = {  
     "name": "Import Bugbear SCNE format (.scne/.vhcl/.vhcm)",  
     "author": "Mazay, Cartoons",  
-    "version": (1, 0, 4),  
+    "version": (1, 0, 5),  
     "blender": (2, 80, 0),  
     "location": "File > Import",  
     "description": "Imports Wreckfest SCNE, VHCL and VHCM files",  
@@ -1694,7 +1694,8 @@ def make_subscenes(get,short_pth=0,use_color=1,imp_subscn_mdl=0,filepath=''):
 
         # Check if path fits in placeholder name
         if(len(scne_name)>53):
-            o['xref'] = scne_relpath # Store too long path in custom property
+            o['xdir'] = scne_relpath.rsplit('/',maxsplit=1)[0]+'/' # Store too long path in custom property
+            o.name = "#xref "+scne_name.rsplit('/',maxsplit=1)[-1]+num # Remove path from object name
         
         # Store original name, heading, flags in custom properties
         #o['Name'] = name
