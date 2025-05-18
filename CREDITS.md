@@ -8,3 +8,4 @@
 2022 Mazay - Bmap Builder, Linux support, Bugmenu  
 2024 Mazay - Mod Generator, SCNE Importer  
 2024 Cartoons - Collision import for SCNE Importer
+2025 RavenStryker - Replace Selected Objects tool

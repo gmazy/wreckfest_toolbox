@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Wreckfest Toolbox Mz",
     "author": "Mazay",
-    "version": (1, 1, 6),
+    "version": (1, 1, 7),
     "blender": (2, 80, 0),
     "location": "Tool Bar",
     "description": "A toolbox that help creating mods for the game Wreckfest",

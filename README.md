@@ -5,7 +5,7 @@
 ## 📥 How to Install
 Download the master branch as a .zip file. Rename folder inside .zip to 'wreckfest_toolbox'. Or download ready to install versions from [releases](https://github.com/gmazy/wreckfest_toolbox/releases). 
 
-In Blender go to `Edit` > `Preferences` > `Add-ons`, then press `Install...` and select the archive. Don't forget to enable the add-on.
+In Blender go to `Edit` > `Preferences` > `Add-ons`. Drag and drop the .zip file into the window to install.
 
 <br>
 
