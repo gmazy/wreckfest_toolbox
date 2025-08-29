@@ -74,7 +74,7 @@ class io_import_wreckfest(AddonPreferences):
 # ------------------------------ Operators ------------------------------ #      
 
 class ImportScneData(bpy.types.Operator, ImportHelper):
-    '''Imports Wreckfest SCNE or VHCL file'''
+    '''Imports Wreckfest SCNE, VHCL, VHCM or TNAV file'''
     bl_idname = "import_scene.scne"  # this is important since its how bpy.ops.import.some_data is constructed
     bl_label = "Import SCNE"
     bl_options = {"UNDO"}
@@ -82,7 +82,7 @@ class ImportScneData(bpy.types.Operator, ImportHelper):
     # ExportHelper mixin class uses this
     filename_ext = ".scne"
 
-    filter_glob : StringProperty(default="*.scne;*.scne.raw;*.vhcl;*.vhcm", options={'HIDDEN'})  
+    filter_glob : StringProperty(default="*.scne;*.scne.raw;*.vhcl;*.vhcm;*.tnav", options={'HIDDEN'})  
     
     # Selected files
     directory: bpy.props.StringProperty(subtype='FILE_PATH', options={'SKIP_SAVE'})
@@ -1837,6 +1837,104 @@ def make_airoutes(get,debug=False):
             if(startIdMainrt > endIdMainrt):
                 ai_route_ob['CustomData'] = 'crossstart = true'
 
+def make_airoutes_tnav(get,debug=False):
+    '''AIROUTES import'''
+    def flip_yz(x, y, z):
+        return x, z, y
+    def perc(percentage, x1, x2): # Calculates point between x1 and x2
+        return (x1+((x2-x1)*percentage))
+    def route_position(percentage, L, R): # Calculates sector coordinates from percentage between Left and Right border
+        return perc(percentage,L[0],R[0]), perc(percentage,L[1],R[1]), perc(percentage,L[2],R[2])
+    def expand_vert(vert, prevVert, distance):
+        x, y, z = vert 
+        deltaX = x - prevVert[0]
+        deltaY = y - prevVert[1]
+        angleRadians = math.atan2(deltaY, deltaX)
+        newX = x + distance * math.cos(angleRadians)
+        newY = y + distance * math.sin(angleRadians)
+        return newX, newY, z
+    def expand_route(route, dist):
+        route[0] = expand_vert(route[0],route[2],dist) # Expand first sector
+        route[1] = expand_vert(route[1],route[3],dist)
+        route[-1] = expand_vert(route[-1],route[-3],dist) # Expand last sector
+        route[-2] = expand_vert(route[-2],route[-4],dist)
+        return route
+
+    version = get.i() # version: WF1=0, WF2=1
+    WF2 = (version>0)
+    num = get.i() # number of airoutes (1=if not alt routes)
+    print ("Found",num,"Airoutes")
+    for route in range(0, num):
+        get.checkHeader('aisc')
+        get.i() # version
+        numsec = get.i() # number of aisectors
+        
+        faces = []
+        verts = []
+        vertsRace = []
+        vertsSafe = []
+        count = 0
+        
+        for s in range(0, numsec):
+            count += 2
+            if(s != 0): # skipping first sector
+                faces += (count-1, count-2, count-4, count-3), # make face between previous and current sector 
+
+            L = flip_yz(get.f(), get.f(), get.f()) # Blue Border sector x,y,z
+            R = flip_yz(get.f(), get.f(), get.f())
+            LSafe = route_position(get.f(), L, R) # Safe Line sector x,y,z
+            if(WF2): u1 = get.f()
+            RSafe = route_position(get.f(), L, R) 
+            if(WF2): u2 = get.f()
+            LRace = route_position(get.f(), L, R) # Race Line sector x,y,z
+            if(WF2): u3 = get.f()
+            RRace = route_position(get.f(), L, R)
+            if(WF2): u4 = get.f()
+
+            verts += L, R,
+            vertsSafe += LSafe, RSafe,
+            vertsRace += LRace, RRace,
+
+            if(debug):
+                label = create_empty_ob(str(s)+'  ('+str(route)+')', type='SINGLE_ARROW', collection='Airoute '+str(route)+' Sectors')
+                label.location = L
+                label.show_name = True
+                label.show_in_front = True
+
+            if(WF2):
+                u5 = get.i()
+
+        startIdMainrt = get.i() # Start Index Of Mainroute Sector
+        endIdMainrt = get.i() # End Index Of mainroute sector
+        get.wftext() # Custom property, empty.
+
+        if(WF2):
+            unknown = get.i(), get.f(), get.i(), get.f(), get.i(), get.i(), get.i(), get.i(), get.i(), get.i(), get.i()
+            
+        vertsSafe = expand_route(vertsSafe, dist=0.25)
+        vertsRace = expand_route(vertsRace, dist=0.5)
+
+        if(route==0): ending = "main"
+        else: ending = "alt"+str(route)
+        return 0
+        
+
+        ai_route_ob = create_mesh_ob("#ai_route_"+ending, verts, faces, meshname="route", show_wire=True, color=(0, 0, 1, 0.03), colorname="blue-route", collection="Airoutes", use_nodes=True)
+        ai_route_ob.color = (0,0,1, 1) # Object color
+        ai_safe_ob = create_mesh_ob("#ai_safe_"+ending, vertsSafe, faces, meshname="route", show_wire=True, color=(1, 0, 0, 0.15), colorname="red-route", collection="Airoutes", use_nodes=True)
+        ai_safe_ob.color = (1,0,0, 1)
+        ai_race_ob = create_mesh_ob("#ai_race_"+ending, vertsRace, faces, meshname="route", show_wire=True, color=(0, 0.8, 0.05, 1), colorname="green-route", collection="Airoutes", use_nodes=True)
+        ai_race_ob.color = (0,1,0, 1)
+        
+        firstRightBorderVert = verts[1] # StartZ, Normally least negative / largest Y value
+        lastLeftBorderVert = verts[-2]
+        if(route==0): # First route = main route
+            if(firstRightBorderVert[1] > lastLeftBorderVert[1]): # Comparing Y (In Bagedit Z) value of route verts
+                ai_route_ob['CustomData'] = 'otherway = true'
+        else: # Alt Route
+            if(startIdMainrt > endIdMainrt):
+                ai_route_ob['CustomData'] = 'crossstart = true'
+
 def make_startpoints(get):
     '''STARTPOINTS import'''
     get.i() # version
@@ -2074,6 +2172,16 @@ def make_vhcl_boxes(get):
     get.skipToHeader('vbox') # Bottom Box
     make_minmax_boxes(get, collection='Vhcm', customdata='IsCollisionModel = true')
 
+def make_tnav(get, debug):
+    '''Track Navigation/TNAV import'''
+    print("Track Navigation/TNAV import")
+    get.checkHeader('trou')
+    version = get.i()
+    num = get.i()
+    print ("Found",num,"Routes")
+    get.skipToHeader('airt')
+    make_airoutes_tnav(get, debug)
+
 def create_fallback_model(filepath):
     '''Fallback cube for encrypted files'''
     filename = os.path.basename(filepath).lower()
@@ -2232,6 +2340,9 @@ def read_scne(context, filepath, short_pth=False, use_color=False, imp_model=Fal
 
     elif(filepath[-5:] == ".vhcm"): # VHCM-format
         make_vhcl_boxes(get)
+
+    elif(filepath[-5:] == ".tnav"): # VHCM-format
+        make_tnav(get, debug)
         
     else: # SCNE-format
 
