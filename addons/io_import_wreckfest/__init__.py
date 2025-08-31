@@ -74,7 +74,7 @@ class io_import_wreckfest(AddonPreferences):
 # ------------------------------ Operators ------------------------------ #      
 
 class ImportScneData(bpy.types.Operator, ImportHelper):
-    '''Imports Wreckfest SCNE, VHCL, VHCM or TNAV file'''
+    '''Imports Wreckfest SCNE, VHCL, VHCM, SCNH or TNAV file'''
     bl_idname = "import_scene.scne"  # this is important since its how bpy.ops.import.some_data is constructed
     bl_label = "Import SCNE"
     bl_options = {"UNDO"}
@@ -82,7 +82,7 @@ class ImportScneData(bpy.types.Operator, ImportHelper):
     # ExportHelper mixin class uses this
     filename_ext = ".scne"
 
-    filter_glob : StringProperty(default="*.scne;*.scne.raw;*.vhcl;*.vhcm;*.tnav", options={'HIDDEN'})  
+    filter_glob : StringProperty(default="*.scne;*.scne.raw;*.vhcl;*.vhcm;*.tnav;*.scnh", options={'HIDDEN'})  
     
     # Selected files
     directory: bpy.props.StringProperty(subtype='FILE_PATH', options={'SKIP_SAVE'})
@@ -2182,6 +2182,132 @@ def make_tnav(get, debug):
     get.skipToHeader('airt')
     make_airoutes_tnav(get, debug)
 
+def make_scnh(get):
+    '''Scene Hierarchy/SCNH import'''
+    print("Scene Hierarchy/SCNH import")
+    get.checkHeader('gamo')
+    version = get.i()
+    numGamo = get.i()
+    print ("Found",numGamo,"Game Objects (SCNH Subscenes)")
+    print(get.i(),get.i(),)
+    print(get.wftext())
+    print(get.wftext())
+    
+    for gamo in range(numGamo):
+        get.skipToHeader('ccon')
+        print("\noffset:"+str(get.p), "Ob",gamo,end="")
+        version = get.i()
+        numCcon = get.i() # 1 = cotf, 2 = coxr+cotf (subscene), 2 = cotf+toco+tobs (group?)
+        print(", num",numCcon)
+
+        data  = {
+          "coxr": {}, #bbXref = Subscene path, Visibility
+          "cotf": {},
+          "toco": {} #Group
+        }
+
+        coxr_path = ""
+        cotf_location =""
+        cotf_scale =""
+        cotf_rotation =""
+
+        for field in range(numCcon):
+            header = get.text(4)[::-1]
+            print("Header",header)
+
+            if header=='coxr': #bbXref
+                version = get.i()
+                num = get.i()
+                #print(version,num)
+                for _ in range(num):
+                    name = get.wftext()
+                    data["coxr"]["path"] = name
+                    coxr_path = str(gamo)+" "+name
+                    visible = get.i()
+                    material = get.i() #unknown
+                    print("Object Path",name)
+                    #print("Visible",visible)
+
+            elif header=='cotf': #bbStaticObject
+                version = get.i()
+                num = get.i()
+
+                location = get.f(),get.f(),get.f() #3
+                print("LocationXZY:",location)
+
+                data["cotf"]["location"] = [location[0],location[2],location[1]]
+                cotf_location =  [location[0],location[2],location[1]]
+
+                unknown = get.i(),get.i(),get.i() #6
+                print("Uk1:",unknown)
+
+                unknown = get.f(),get.f(),get.f() #10
+                print("Scale:",unknown)
+                cotf_scale = unknown[0],unknown[2],unknown[1]
+
+                unknown = get.i(),get.i() #11
+                print("Uk3:",unknown,end="")
+                unknown = get.i(),get.i() #13
+                print("  Group?",unknown)
+
+                rotation = get.f(),get.f(),get.f(),get.f() #18
+                cotf_rotation = rotation
+                print("RotationXZYW:",rotation)
+
+                unknown = get.f(),get.i(),get.i() #20
+                print("Uk5:",unknown,end="")
+
+                unknown=get.i() #21
+                print("  Count?:",unknown,end="")
+
+                unknown = get.i(),get.i(),get.i(),get.i() #25 (Minimum size of 100)
+                print("  Unknown6:",unknown)
+
+                #unknown = get.f(),get.f(),get.f()
+                #print("sometimes:",unknown)
+
+                #matrix = get.matrix()
+                
+
+
+
+                #get.skip(104)
+
+                #name = get.wftext()
+                #print("Name",name)
+                #oName = get.wftext()
+                #print("Object Name",oName)
+                #print(get.p)
+                #visibility = get.i(1)
+                #print("Visibility:",visibility)
+
+                #get.checkHeader("ccon")
+                #version = get.i()
+                #num = get.i()
+                #print("ccon",num,version)
+                break
+
+            elif header=='toco':
+                print("toco found")
+                break
+
+        # Create empties
+        if coxr_path and cotf_location:
+            o = bpy.data.objects.new( coxr_path, None )
+            link_to_collection(o, 'Location')
+            o.empty_display_size = 1
+            o.location = cotf_location
+            o.scale = cotf_scale
+
+            o.rotation_mode = 'QUATERNION' #'XYZ'
+            rot=cotf_rotation
+            o.rotation_quaternion = rot[3], rot[0], rot[2]*-1, rot[1]*-1  # wxyz blender, xzyw wreckfest
+
+            #o.show_name = True
+            bpy.context.view_layer.objects.active = o
+            o.select_set(True)
+
+
 def create_fallback_model(filepath):
     '''Fallback cube for encrypted files'''
     filename = os.path.basename(filepath).lower()
@@ -2341,8 +2467,11 @@ def read_scne(context, filepath, short_pth=False, use_color=False, imp_model=Fal
     elif(filepath[-5:] == ".vhcm"): # VHCM-format
         make_vhcl_boxes(get)
 
-    elif(filepath[-5:] == ".tnav"): # VHCM-format
+    elif(filepath[-5:] == ".tnav"): # TNAV-format
         make_tnav(get, debug)
+
+    elif(filepath[-5:] == ".scnh"): # SCNH-format
+        make_scnh(get)
         
     else: # SCNE-format
 
