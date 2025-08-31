@@ -74,7 +74,7 @@ class io_import_wreckfest(AddonPreferences):
 # ------------------------------ Operators ------------------------------ #      
 
 class ImportScneData(bpy.types.Operator, ImportHelper):
-    '''Imports Wreckfest SCNE, VHCL, VHCM or TNAV file'''
+    '''Imports Wreckfest SCNE, VHCL, VHCM, SCNH or TNAV file'''
     bl_idname = "import_scene.scne"  # this is important since its how bpy.ops.import.some_data is constructed
     bl_label = "Import SCNE"
     bl_options = {"UNDO"}
@@ -82,7 +82,7 @@ class ImportScneData(bpy.types.Operator, ImportHelper):
     # ExportHelper mixin class uses this
     filename_ext = ".scne"
 
-    filter_glob : StringProperty(default="*.scne;*.scne.raw;*.vhcl;*.vhcm;*.tnav", options={'HIDDEN'})  
+    filter_glob : StringProperty(default="*.scne;*.scne.raw;*.vhcl;*.vhcm;*.tnav;*.scnh", options={'HIDDEN'})  
     
     # Selected files
     directory: bpy.props.StringProperty(subtype='FILE_PATH', options={'SKIP_SAVE'})
@@ -2204,6 +2204,168 @@ def make_tnav(get, debug):
     get.skipToHeader('airt')
     make_airoutes_tnav(get, debug)
 
+def make_scnh(get):
+    '''Scene Hierarchy/SCNH import'''
+    print("Scene Hierarchy/SCNH import")
+    get.checkHeader('gamo')
+    version = get.i()
+    numGamo = get.i()
+    print ("Found",numGamo,"Game Objects (SCNH Subscenes)")
+    print(get.i(),get.i(),)
+    print(get.wftext())
+    print(get.wftext())
+    
+    for gamo in range(numGamo):
+        get.skipToHeader('ccon')
+        print("\noffset:"+str(get.p), "Ob",gamo,end="")
+        offset = get.p
+        version = get.i()
+        numCcon = get.i() # 1 = cotf, 2 = coxr+cotf (subscene), 2 = cotf+toco+tobs (group?)
+        print(", num",numCcon)
+
+        data  = {
+          "coxr": {}, #bbXref = Subscene path, Visibility
+          "cotf": {},
+          "toco": {} #Group
+        }
+
+        coxr_path = ""
+        cotf_location =""
+        cotf_scale =""
+        cotf_rotation =""
+
+        for field in range(numCcon):
+            header = get.text(4)[::-1]
+            print("Header",header)
+
+            if header=='coxr': #bbXref
+                version = get.i()
+                num = get.i()
+                #print(version,num)
+                for _ in range(num):
+                    name = get.wftext()
+                    data["coxr"]["path"] = name
+                    coxr_path = "#xref "+shorthand_path(name,"")
+                    #coxr_path = str(gamo)+" "+name #debug
+                    visible = get.i()
+                    material = get.i() #unknown
+                    print("Object Path",name)
+                    #print("Visible",visible)
+
+            elif header=='cotf': #bbStaticObject
+                version = get.i()
+                num = get.i()
+
+                location = get.f(),get.f(),get.f() #3
+                print("LocationXZY:",location)
+
+                data["cotf"]["location"] = [location[0],location[2],location[1]]
+                cotf_location = location
+
+                uk1 = get.i(),get.i(),get.i() #6
+                print("Uk1:",uk1)
+
+                scale = get.f(),get.f(),get.f() #10
+                print("Scale:",scale)
+                cotf_scale = scale
+
+                uk3 = get.i() #11
+                print("Uk3:",uk3,end="")
+
+                group = get.i()
+                print("  Group",group,end="")
+
+                uk4 = get.i(),get.i() #13
+                print("  Uk4",uk4)
+
+
+
+                rotation = get.f(),get.f(),get.f(),get.f() #18
+                cotf_rotation = rotation
+                print("RotationXZYW:",rotation)
+
+                uk5 = get.f(),get.i(),get.i() #20
+                print("Uk5:",uk5,end="")
+
+                count=get.i() #21
+                print("  Count?:",count,end="")
+
+                uk6 = get.i(),get.i(),get.i(),get.i() #25 (Minimum size of 100)
+                print("  Uk6:",uk6)
+
+                #unknown = get.f(),get.f(),get.f()
+                #print("sometimes:",unknown)
+
+                #matrix = get.matrix()
+                
+
+
+
+                #get.skip(104)
+
+                #name = get.wftext()
+                #print("Name",name)
+                #oName = get.wftext()
+                #print("Object Name",oName)
+                #print(get.p)
+                #visibility = get.i(1)
+                #print("Visibility:",visibility)
+
+                #get.checkHeader("ccon")
+                #version = get.i()
+                #num = get.i()
+                #print("ccon",num,version)
+                break
+
+            elif header=='toco':
+                print("toco found")
+                break
+
+        # Create empties
+        if cotf_location:
+            if coxr_path:
+                o = bpy.data.objects.new( coxr_path, None )
+                link_to_collection(o, 'Subscenes (Scnh) '+str(group))
+            else:
+                o = bpy.data.objects.new( "Group"+str(group), None )
+                link_to_collection(o, 'Subscenes (Scnh) Groups')
+            o.empty_display_size = 1
+            o.location = cotf_location
+            o.scale = cotf_scale
+
+            rot=cotf_rotation
+            o.rotation_mode = 'QUATERNION' #'XYZ'
+            o.rotation_quaternion = rot[3], rot[0], rot[1], rot[2]  # wxyz blender, xzyw wreckfest
+            #o.rotation_mode = 'XYZ'
+
+            #Immediately after setting object location/rotation/scale the object's matrix_basis is updated
+
+            # Flip Y and Z in 4x4 transform matrix:
+            m = o.matrix_basis #matrix_world
+            x, y, z, w = m[0], m[1], m[2], m[3]
+            # swapping third and second row, and third and second column                  
+            o.matrix_basis = mathutils.Matrix([
+                (x.x, x.z, x.y, x.w),
+                (z.x, z.z, z.y, z.w),
+                (y.x, y.z, y.y, y.w),
+                (w.x, w.z, w.y, w.w),
+            ])
+
+            o["offset"]=offset
+            o["uk1"]=uk1
+            o["uk3"]=uk3
+            o["group"]=group
+            o["uk4"]=uk4
+            o["uk5"]=uk5
+            o["count"]=count
+            o["uk6"]=uk6
+
+
+            #o.show_name = True
+            bpy.context.view_layer.objects.active = o
+            o.select_set(True)
+
+
 def create_fallback_model(filepath):
     '''Fallback cube for encrypted files'''
     filename = os.path.basename(filepath).lower()
@@ -2363,8 +2525,11 @@ def read_scne(context, filepath, short_pth=False, use_color=False, imp_model=Fal
     elif(filepath[-5:] == ".vhcm"): # VHCM-format
         make_vhcl_boxes(get)
 
-    elif(filepath[-5:] == ".tnav"): # VHCM-format
+    elif(filepath[-5:] == ".tnav"): # TNAV-format
         make_tnav(get, debug)
+
+    elif(filepath[-5:] == ".scnh"): # SCNH-format
+        make_scnh(get)
         
     else: # SCNE-format
 
