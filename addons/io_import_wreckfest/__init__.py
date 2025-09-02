@@ -1269,7 +1269,8 @@ def make_models(get,filepath,short_pth,imp_anim,imp_mat,imp_tga,debug,imp_shpe=F
                     if(ob!=''):
                         #ob.rotation_euler = rot[0], rot[2], rot[1]
                         ob.rotation_mode = 'QUATERNION'
-                        ob.rotation_quaternion = rot[3], rot[0], rot[2]*-1, rot[1]*-1  # wxyz blender, xzyw wreckfest
+                        #ob.rotation_quaternion = rot[3], rot[0], rot[2]*-1, rot[1]*-1  # wxyz blender, xzyw wreckfest
+                        ob.rotation_quaternion = rot[3], rot[0]*-1, rot[2]*-1, rot[1]*-1  # wxyz blender, xzyw wreckfest
                         ob.location = loc[0], loc[2], loc[1]
                         ob.keyframe_insert(data_path="location", frame=frame)
                         ob.keyframe_insert(data_path="rotation_quaternion", frame=frame)
