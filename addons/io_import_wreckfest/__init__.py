@@ -95,7 +95,7 @@ class ImportScneData(bpy.types.Operator, ImportHelper):
     imp_tga : BoolProperty(name="Materials: Save .tga textures to disk", description="Convert .bmap into .tga texture and save to disk\n\nIMPORTANT:\n- Save .blend file on disk beforehand under mods/xxx/data/...\n\nNote:\n- Only base color texture in low quality\n- Will recreate all material folders in their relative locations under current data folder", default=False)
     imp_model : BoolProperty(name="Models", description="Import Models\n\nNote:\n- Partial import\n- No UV mapping\n- High quality models including #lod1 ignored\n- Collision only models import as cubes", default=True)
     imp_shpe : BoolProperty(name="Models-collision", description="Import Models collision shape\n\nNote:\n- Work in progress. Does not have correct transform", default=False)
-    imp_anim : BoolProperty(name="Animations", description="Import Animations\n\nNote:\n- You may want to set scene frame rate before importing animations\n- Some issues may occur with 3 axis rotations", default=False)
+    imp_anim : BoolProperty(name="Animations", description="Import Animations\n\nNote:\n- Slow imports\n- You may want to set scene frame rate before importing animations", default=True)
     imp_subscn : BoolProperty(name="Subscenes", description="Import Subscene Placeholders\n\nNote:\n- Imports using unofficial specification.\n- Ignored: Name, Heading, Flags:Start", default=True)
     imp_subscn_mdl : BoolProperty(name="Subscenes: Import placeholder", description="Imports all linked subscene files.\n\n- Generates simplified placeholder of each model\n- Turn this off if import fails", default=True)
     imp_portal : BoolProperty(name="Antiportals", description="Import Antiportals\n\nNote:\n- Work in progress\n- Does not export properly as bounding box is not following geometry", default=True)
@@ -1269,7 +1269,7 @@ def make_models(get,filepath,short_pth,imp_anim,imp_mat,imp_tga,debug,imp_shpe=F
                     if(ob!=''):
                         #ob.rotation_euler = rot[0], rot[2], rot[1]
                         ob.rotation_mode = 'QUATERNION'
-                        ob.rotation_quaternion = rot[3], rot[0], rot[2]*-1, rot[1]*-1  # wxyz blender, xzyw wreckfest
+                        ob.rotation_quaternion = rot[3], rot[0]*-1, rot[2]*-1, rot[1]*-1  # wxyz blender, xzyw wreckfest
                         ob.location = loc[0], loc[2], loc[1]
                         ob.keyframe_insert(data_path="location", frame=frame)
                         ob.keyframe_insert(data_path="rotation_quaternion", frame=frame)
@@ -1314,7 +1314,7 @@ def make_models(get,filepath,short_pth,imp_anim,imp_mat,imp_tga,debug,imp_shpe=F
 
                     # Rename model vertex groups to correct names
                     if(ob!='' and str(boneId) in ob.vertex_groups):
-                        ob.vertex_groups[boneId].name = name
+                        ob.vertex_groups[str(boneId)].name = name
 
                     if(debug): # Not finished, only in debug mode
                         # Add armature bones
@@ -1343,7 +1343,7 @@ def make_models(get,filepath,short_pth,imp_anim,imp_mat,imp_tga,debug,imp_shpe=F
                         #if(not ob==''):
                         #    #ob.rotation_euler = rot[0], rot[2], rot[1]
                         #    ob.rotation_mode = 'QUATERNION'
-                        #    ob.rotation_quaternion = rot[3], rot[0], rot[2]*-1, rot[1]*-1  #wxyz blender, xzyw wreckfest
+                        #    ob.rotation_quaternion = rot[3], rot[0]*-1, rot[2]*-1, rot[1]*-1  #wxyz blender, xzyw wreckfest
                         #    ob.location = loc[0], loc[2], loc[1]
                         #    ob.keyframe_insert(data_path="location", frame=frame)
                         #    ob.keyframe_insert(data_path="rotation_quaternion", frame=frame)
