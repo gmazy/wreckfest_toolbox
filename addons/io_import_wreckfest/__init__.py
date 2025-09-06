@@ -2306,7 +2306,7 @@ def make_scnh(get):
                 o = bpy.data.objects.new( coxr_path, None )
                 link_to_collection(o, 'Subscenes (Scnh) '+str(group))
             else:
-                o = bpy.data.objects.new( "Group"+str(group), None )
+                o = bpy.data.objects.new( "Group (ParentID:"+str(group)+")", None )
                 link_to_collection(o, 'Subscenes (Scnh) Groups')
             o.empty_display_size = 1
             o.location = cotf_location
