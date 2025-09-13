@@ -26,6 +26,9 @@ class config():
     c_resolution = 1500 # Cache image maximum resolution, 1024, 2048 etc.
     c_extension = 'cmap' # Cache image extension, 'cmap' or 'webp'
 
+    # Command to run Wine
+    wine_cmd = 'wine'
+
 import bpy
 import os
 import binascii
@@ -617,10 +620,15 @@ def convert_bmap_file_to_image(bmapFile, tgaPath, quality=90, resolution=256, fi
     # File_formats: https://docs.blender.org/api/current/bpy_types_enum_items/image_type_items.html#rna-enum-image-type-items
     breckfest_location = breckfest_locate()
     tempFolder = tempfile.gettempdir() # Windows: C:\users\user\AppData\Local\Temp 
-    exe_str = '"'+breckfest_location+'" "'+bmapFile+'"'
-    print(exe_str,'\n')
+
+    args = [breckfest_location, bmapFile]
+    if sys.platform != 'win32':  args = [config.wine_cmd] + args # In Linux run .exe with wine
+    print("\n"+' '.join(args))
+    #exe_str = '"'+breckfest_location+'" "'+bmapFile+'"'
+    #print(exe_str,'\n')
+
     if os.path.isfile(breckfest_location) and not os.path.isfile(tgaPath):
-        subprocess.run(exe_str,  cwd = tempFolder, timeout = 60) # run = wait for Breckfest to finish, cwd = folder of unpack 
+        subprocess.run(args,  cwd = tempFolder, timeout = 60) # run = wait for Breckfest to finish, cwd = folder of unpack 
 
         noExtension = tempFolder +'\\'+ bmapFile.split('\\')[-1][:-5] 
 
@@ -2088,7 +2096,7 @@ def breckfest_uncompress(filepath):
     '''Uncompress and return data of .scne file'''
     breckfest_location = breckfest_locate()  
     args = [breckfest_location, '-dump', filepath]
-    if sys.platform != 'win32':  args = ['wine'] + args # In Linux run .exe with wine
+    if sys.platform != 'win32':  args = [config.wine_cmd] + args # In Linux run .exe with wine
     print("\n"+' '.join(args))
     if not os.path.isfile(breckfest_location): 
         popup("Breckfest.exe not found. Check paths in addon preferences.")
