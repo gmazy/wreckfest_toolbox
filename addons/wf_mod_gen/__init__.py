@@ -21,10 +21,12 @@ bl_info = {
 
 import bpy
 import os
+import sys
 import re
 import shutil
 from . import bagwrite
-from webbrowser import open as explorer_view
+import subprocess
+from webbrowser import open as webbrowser_open
 from os.path import join as pathj
 from bpy.props import StringProperty,BoolProperty
 
@@ -329,7 +331,18 @@ class WF_MODGEN_OT_create(bpy.types.Operator):
                             shutil.copyfile(file_in, file_out)
                         else:
                             print("File exists, skipping: ",file_out)
+
+            def explorer_view(path):
+                """Open folder in OS file manager"""
+                if sys.platform == 'linux':
+                    try:
+                        subprocess.Popen(['xdg-open', path])
+                    except:
+                        webbrowser_open(path)
+                else:
+                    webbrowser_open(path)
     
+
             copy_folder( example_shared_files, mod_folder)
             copy_folder( example_files, mod_folder)
 
