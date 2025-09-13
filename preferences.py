@@ -1,5 +1,6 @@
 """Addon preferences that are saved inbetween sesions."""
 import bpy
+import sys
 import os.path
 import subprocess
 import threading
@@ -78,12 +79,22 @@ class WreckfestToolboxAddonPreference(bpy.types.AddonPreferences):
         default=r"C:\Program Files (x86)\Steam\SteamApps\common\Wreckfest\tools\Breckfest.exe",
         )
 
+    # Bagdecompress path
+    bagdecompress_path : bpy.props.StringProperty(
+        name="BagDecompress",
+        description="\nLocate BagDecompress to be able to import Wreckfest 2 files",
+        subtype='FILE_PATH',
+        default=r"",
+        )
+
     # Username
     username : bpy.props.StringProperty(
         name="Username",
         description="\nUsername for exported BGO files metadata. Can be left empty",
         default=environ['USERNAME'] if 'USERNAME' in environ else 'UNKNOWN_USERNAME',
         )
+
+    experimental : bpy.props.BoolProperty(name="Experimental Features", description="Enable experimental features")
 
     # Build assets tool path
     wf_build_asset_subpath: bpy.props.StringProperty(
@@ -149,6 +160,17 @@ class WreckfestToolboxAddonPreference(bpy.types.AddonPreferences):
 
         row = layout.row()
         row.prop(self, "username")
+
+        layout.separator()
+        row = layout.row()
+        row.prop(self, "experimental")
+
+        if self.experimental:
+            layout.separator()
+            row = layout.row()
+            row.alert = self.bagdecompress_path != '' and not path.isfile(self.bagdecompress_path)
+            row.prop(self, "bagdecompress_path")
+
 
     @staticmethod
     def popen_and_call(on_exit, popen_args):
