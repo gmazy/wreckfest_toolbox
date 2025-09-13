@@ -64,7 +64,7 @@ class BUGMENU_MT_menu(bpy.types.Menu):
 
 
 class BUGMENU_MT_bmapcache(bpy.types.Menu):
-    bl_label = "Bmap Cache"
+    bl_label = "BMAP Cache"
     def draw(self, context):
         layout = self.layout
         layout.scale_y = 1.8
@@ -687,8 +687,8 @@ class BUGMENU_OT_setzerospec(bpy.types.Operator):
             image.generated_type ='UV_GRID'
             return image
 
-        fileName = "default_zero_spec_s.tga"
-        fullPath = r'X:\data\art\textures\default_zero_spec_s.tga'
+        fileName = "default_zero_spec_s.bmap"
+        fullPath = r'X:\tools\BmapCache\data\art\textures\default_zero_spec_s.tga'
 
         updated_node_trees = []
         for obj in bpy.context.selected_objects:
