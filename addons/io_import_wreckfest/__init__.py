@@ -336,7 +336,7 @@ def unregister():
     bpy.utils.unregister_class(ImportScneData)
     bpy.utils.unregister_class(ImportScneDataPh)
     bpy.utils.unregister_class(ImportBmapData)
-    bpy.utils.register_class(IMPORT_SCENE_OT_repair_bmapcache)
+    bpy.utils.unregister_class(IMPORT_SCENE_OT_repair_bmapcache)
     if bpy.app.version >= (4,1,0):
         bpy.utils.unregister_class(WM_FH_scne)
         bpy.utils.unregister_class(WM_FH_scneph)
