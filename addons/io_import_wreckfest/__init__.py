@@ -12,7 +12,7 @@
 bl_info = {  
     "name": "Import Bugbear SCNE format (.scne/.vhcl/.vhcm)",  
     "author": "Mazay, Cartoons",  
-    "version": (1, 0, 5),  
+    "version": (1, 0, 6),  
     "blender": (2, 80, 0),  
     "location": "File > Import",  
     "description": "Imports Wreckfest SCNE, VHCL and VHCM files",  
@@ -668,7 +668,26 @@ def add_mapping_node(scale, linkOutputTo, material, YLocation):
     material.node_tree.links.new(linkOutputTo.inputs['Vector'], mapping_node.outputs['Vector'])
     return mapping_node
 
+def is_simple_blendmat(matName,txtrList):
+    '''Test if material is auto generated from 4 inputs of simple #blend material'''
+    if("#blend" in matName.lower() and len(txtrList) == 12):
+        sharedName = txtrList[6][1].split("_blend_c.bmap",maxsplit=1)[0]
+        if (txtrList[7][1] == txtrList[6][1] and
+            txtrList[8][1] == sharedName+"_macro_ns.bmap" and
+            txtrList[9][1] == sharedName+"_color_c.bmap" and
+            txtrList[10][1] == sharedName+"_clutter_color_t.bmap" and
+            txtrList[11][1] == sharedName+"_clutter_mask_t.bmap" and
+            txtrList[1][1] == txtrList[0][1].replace("_c.bmap","_ns.bmap") and
+            txtrList[3][1] == txtrList[2][1].replace("_c.bmap","_ns.bmap") and
+            txtrList[5][1] == txtrList[4][1].replace("_c.bmap","_ns.bmap")):
+            return True
+    return False
+
 def add_wf_material(txtrList,matName,filepath,spec,gloss,imp_tga,textureUV,textureScale):
+    '''Create material if it does not already exist with the same name'''
+    if (matName in bpy.data.materials):
+        return
+
     if bpy.app.version >= (4,00):
         wf_bsdf_slots = [
             'Transmission Weight', # 0
@@ -700,7 +719,8 @@ def add_wf_material(txtrList,matName,filepath,spec,gloss,imp_tga,textureUV,textu
             'Tangent', # 11
         ]
 
-    simpleBlendmat = ("#blend" in matName.lower() and len(txtrList) == 12) # Assuming blindlly materials with 12 textures and #blend use only 4 input materials shortcut
+
+    simpleBlendmat = is_simple_blendmat(matName,txtrList)
     blendMatTranslate =  {6:0, 0:1, 2:2, 4:3} # Blend, red, green blue
 
     importFolder = filepath.rsplit("\\", maxsplit=1)[0] + '\\' # folder of file being imported
