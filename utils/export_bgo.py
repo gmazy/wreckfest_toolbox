@@ -318,7 +318,12 @@ class WFTB_OP_export_bgo(bpy.types.Operator):
         file.write(bytes('\x00\x00\x00\x00', 'utf-8'))
         file.write(struct.pack('I', 0))
         file.write(bytes('\x00\x00\x00\x00', 'utf-8'))
-        self.write_cstring(mat.name, file)
+        # Rewrite material name moving .001 numbering before #tags
+        mat_name = mat.name.strip()
+        if("#" in mat_name and mat_name[-4] == "." and mat_name[-3:].isdigit()):
+            tag = mat_name.find("#")
+            mat_name = mat_name[:tag] + mat_name[-4:] + mat_name[tag:-4]
+        self.write_cstring(mat_name, file)
 
         is_material_written = False
         if mat.node_tree is not None:
