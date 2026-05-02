@@ -1191,7 +1191,7 @@ def make_models(get,filepath,short_pth,imp_anim,imp_mat,imp_tga,debug,imp_shpe=F
         modelname = get.wftext()
         DynamicTypeString = get.wftext()
         if(str(chr(163)) in DynamicTypeString): return None 
-        if(mdl_version>0): # wf
+        if(mdl_version>1): # wf
             get.text(4)
             get.wftext()
         matrix = get.matrix()
@@ -1426,7 +1426,7 @@ def make_models_placeholder(get,filepath,short_pth,use_color=0, model_upd=False,
         modelname = get.wftext()
         DynamicTypeString = get.wftext()
         if(str(chr(163)) in DynamicTypeString): return None
-        if(mdl_version>0): # wf
+        if(mdl_version>1): # wf
             get.text(4)
             get.wftext()
         matrix = get.matrix()
