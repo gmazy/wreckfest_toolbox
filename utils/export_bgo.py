@@ -18,6 +18,7 @@ import bmesh
 import math
 import mathutils
 from bpy_extras.io_utils import ExportHelper
+from bpy_extras import anim_utils
 
 
 wf_custom_data = {
@@ -542,13 +543,24 @@ class WFTB_OP_export_bgo(bpy.types.Operator):
         self.write_filelen(gmesh_start_offset, file, -8)
 
     @staticmethod
-    def get_keyframes(obj): # Get every keyframe. Subframes return as decimals.
+    def get_keyframes(self,obj):
+        """Get every keyframe number. Subframes return as decimals."""
         keyframes = []
-        if obj.animation_data is not None and obj.animation_data.action is not None:
-            for fcu in obj.animation_data.action.fcurves:
+        try:
+            a_data = obj.animation_data
+            if bpy.app.version < (5,0,0):
+                a_container = a_data.action
+            else:
+                a_container = anim_utils.action_get_channelbag_for_slot(a_data.action, a_data.action_slot)
+            for fcu in a_container.fcurves:
                 for keyframe in fcu.keyframe_points:
                     keyframes.append(keyframe.co.x) #co.x = time
-        return sorted(set(keyframes)) #remove doubles and order
+            return sorted(set(keyframes)) #remove doubles and order
+        except:
+            self.show_message('Keyframes for "'+obj.name+'" could not be found. '+
+                'Please check your action slots or something \U0001F937', 'ERROR')
+            return [0]
+
 
     @staticmethod
     def write_animations(self, file, exportables, objects_id_dictionary, bake_animation=False):
@@ -564,13 +576,13 @@ class WFTB_OP_export_bgo(bpy.types.Operator):
 
         frame_before = bpy.context.scene.frame_current #backup frame selection
         for obj in exportables:
-            if obj.animation_data and obj.animation_data.action and len(obj.animation_data.action.fcurves)>0:
+            if obj.animation_data and obj.animation_data.action and obj.animation_data.action.frame_range[1]>0:
                 if self.find_object_type(obj) == 'OBJM':    
                     anim_offset = self.create_header('ANIM', 0, file)
                     file.write(struct.pack('I', objects_id_dictionary[obj.name])) #Object ID (reference to mesh)
                     asmp_offset = self.create_header('ASMP', 0, file)
 
-                    keys = self.get_keyframes(obj) # Get every keyframe number
+                    keys = self.get_keyframes(self,obj) # Get every keyframe number
                     
                     if(bake_animation): # 1 Keyframe every Blender frame
                         firstFrame = round(keys[0])

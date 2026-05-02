@@ -27,7 +27,10 @@ def register_classes(classlists, debug=False):
         impline = "from .%s import %s" % (fr, ", ".join([i for i in imps]))
         classline = "classes.extend([%s])" % (", ".join([i for i in imps]))
 
-        exec(impline)
+        if bpy.app.version >= (5,1,0):
+            exec(impline, globals())
+        else:
+            exec(impline)
         exec(classline)
 
     for c in classes:
