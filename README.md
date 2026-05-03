@@ -19,6 +19,7 @@ To enable all features following paths should be configured in addon prerefences
 - **`BGO Exporter`** - Export vehicles and tracks into Wreckfest  
 - **`SCNE Importer`** - Import SCNE and VHCL models in low detail without UV  
 - **`Mod Generator`** - Generate all files needed for derby track  
+- **`BMAP Cache`** - Drag and drop BMAP textures directly into shader editor  
 - **`Bugmenu`** - Quick menu with tools and shortcuts  
 - **`Shaders`** - Wreckfest shading recreated with Blender node groups  
 - **`Ai Route Generator`** - Generate AI routes from path  

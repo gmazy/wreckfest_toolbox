@@ -620,10 +620,12 @@ def convert_bmap_file_to_image(bmapFile, tgaPath, quality=90, resolution=256, fi
     exe_str = '"'+breckfest_location+'" "'+bmapFile+'"'
     print(exe_str,'\n')
     if os.path.isfile(breckfest_location) and not os.path.isfile(tgaPath):
-        subprocess.run(exe_str,  cwd = tempFolder, timeout = 60) # run = wait for Breckfest to finish, cwd = folder of unpack 
+        try:
+            subprocess.run(exe_str, shell=False, cwd=tempFolder, timeout=60) # run = wait for Breckfest to finish, cwd = folder of unpack 
+        except subprocess.TimeoutExpired:
+            print("Error: Breckfest took longer than 60 seconds.")
 
         noExtension = tempFolder +'\\'+ bmapFile.split('\\')[-1][:-5] 
-
         for ext in ['.dxt1.png', '.dxt5.png', '.ati2.png']: # Check if Breckfest unpacked file found.
             if os.path.isfile(noExtension + ext):
                 foundPng = noExtension + ext

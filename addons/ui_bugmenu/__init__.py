@@ -8,7 +8,7 @@
 bl_info = {  
     "name": "Bugmenu",  
     "author": "Mazay",  
-    "version": (0, 2, 0),  
+    "version": (0, 2, 1),  
     "blender": (2, 80, 0),  
     "location": "Topbar",  
     "description": "Adds Bugmenu to topbar.",  
@@ -672,7 +672,7 @@ class BUGMENU_OT_set_shader(bpy.types.Operator):
 class BUGMENU_OT_setzerospec(bpy.types.Operator):
     """Add material to shader editor"""
     bl_idname = "bugmenu.setzerospec"
-    bl_label = "default_zero_spec_s.tga  -  No Reflections"
+    bl_label = "default_zero_spec_s.bmap  -  No Reflections"
     bl_options = {'REGISTER', 'UNDO'}
 
     @classmethod
@@ -687,8 +687,9 @@ class BUGMENU_OT_setzerospec(bpy.types.Operator):
             image.generated_type ='UV_GRID'
             return image
 
-        fileName = "default_zero_spec_s.tga"
-        fullPath = r'X:\data\art\textures\default_zero_spec_s.tga'
+        fileName = "default_zero_spec_s.bmap"
+        wf_path = bpy.context.preferences.addons['wreckfest_toolbox'].preferences.wf_path or "\\"
+        fullPath = os.path.join(wf_path,'tools','BmapCache','data','art','textures','default_zero_spec_s.cmap')
 
         updated_node_trees = []
         for obj in bpy.context.selected_objects:
