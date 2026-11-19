@@ -662,15 +662,22 @@ class WFTB_OP_export_bgo(bpy.types.Operator):
         if 'CustomData' in obj:
             custom_data = obj['CustomData'] + "\r\n"
 
+        valid_properties = ['col','vis','dyn','vol','otherway','crossstart','IsCollisionModel','Heading',
+            'Density','AmbientProbe','VisibleToRaycast','IsTestModel','IsWriteModel','IsOccluder',
+            'InVisual','InStageA','InStageB','InStageC','InCollision','IsSprite','Split','LightMapped',
+            'VertexColors','RaycastOpaque','RaycastTransparent','bakeVertexAO','TrackObjectsVersion',
+            'TriggerGroup','DynamicType','LodControl','AlphaFade']
+
         for key, value in obj.items():
-            if key.startswith("WF_"):
+            if key in valid_properties or key.startswith("WF_"):
                 if value in [1, '1', 'true']: # Boolean is int, Manually typed value is sometimes string.
                     prop_value = "true"
                 elif value in [0, '0', 'false']:
                     prop_value = "false"
                 else: # Other text values
                     prop_value = '"' + str(value).strip('"') + '"'
-                custom_data += key[3:] + " = " + prop_value + "\r\n"
+                if key.startswith("WF_"): key = key[3:] # Remove WF_
+                custom_data += key + " = " + prop_value + "\r\n"
 
         return custom_data
 
