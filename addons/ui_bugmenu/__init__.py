@@ -81,7 +81,8 @@ class BUGMENU_MT_special(bpy.types.Menu):
         layout.operator("bugmenu.repair_customdata", icon='LIBRARY_DATA_BROKEN')
         if (bpy.app.version>=(2,80)):
             #layout.separator()
-            layout.menu("BUGMENU_MT_experimental", icon='TOOL_SETTINGS')
+            layout.operator("bugmenu.update_customdata", icon='PRESET') 
+            #layout.menu("BUGMENU_MT_experimental", icon='TOOL_SETTINGS')
 
 class BUGMENU_MT_experimental(bpy.types.Menu):
     bl_label = "Experimental"
@@ -358,42 +359,45 @@ class BUGMENU_OT_repair_customdata(bpy.types.Operator):
         return {'FINISHED'}
 
 class BUGMENU_OT_update_customdata(bpy.types.Operator):
-    """Update Custom Properties to the new WF_ format
-\nBefore: CustomData: col = true\nAfter:    WF_col: true\n\nApplies to selected objects."""
+    """Update Custom Properties to the new format
+\nBefore: CustomData: col = true\nAfter:    col: true\n\nApplies to selected objects."""
     bl_idname = "bugmenu.update_customdata"
     bl_label = "Update Custom Properties"
     bl_options = {'REGISTER', 'UNDO'}
 
     @classmethod
     def poll(cls, context):
-        if len(context.selected_objects) > 0:
-            for obj in bpy.context.selected_objects:
-                for key in obj.keys():
-                    if 'CustomData' in obj:
-                        return True
+        for obj in bpy.context.selected_objects:
+            if 'CustomData' in obj:
+                    return True
+            for key in obj.keys():
+                if key.startswith("WF_"):
+                    return True
         return False
 
     def execute(self, context):
-        for obj in bpy.context.selected_objects: #
-            for key in obj.keys():
-                print(key)
+        for obj in bpy.context.selected_objects:
+            if 'CustomData' in obj:
+                customData = obj['CustomData']
+                del obj['CustomData'] # Delete old CustomData
 
-                if 'CustomData' in obj:
-                    customData = obj['CustomData']
-                    del obj[key] # Delete old CustomData
+                lines = re.split('\r\n|\n|\r|\|', customData) # \r\n, \n, \r, |
+                for line in lines:
+                    key,value = line.split('=',1)
+                    key,value = key.strip(), value.strip()
+                    if key != '' and value != '':
+                        if value in ['1', 'true']: # Boolean for checkbox
+                            value = True
+                        elif value in ['0', 'false']:
+                            value = False
+                        obj[str(key)] = value
 
-                    lines = re.split('\r\n|\n|\r|\|', customData) # \r\n, \n, \r, |
-                    for line in lines:
-                        key,value = line.split('=',1)
-                        key,value = key.strip(), value.strip()
-                        if key != '' and value != '':
-                            if value in ['1', 'true']: # Boolean for checkbox
-                                value = True
-                            elif value in ['0', 'false']:
-                                value = False
-                            obj['WF_'+str(key)] = value
+            for key in list(obj.keys()): # Remove WF_ prefix from property names
+                if key.startswith("WF_"):
+                    obj[key[3:]] = obj[key]
+                    del obj[key]
 
-        if (bpy.app.version>=(2,80)): obj.select_set(state=True) #Refresh view
+        if (bpy.app.version>=(2,80)): obj.select_set(state=True) # Refresh view
         return {'FINISHED'}
 
 class BUGMENU_OT_airoutes_from_curve(bpy.types.Operator):
